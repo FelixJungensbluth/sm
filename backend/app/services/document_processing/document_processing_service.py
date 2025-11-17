@@ -5,7 +5,7 @@ from app.services.document_processing.markdown_converter import (
     convert_to_markdown,
 )
 
-from app.models.file import ProcessedFile
+from app.models.document import ProcessedDocument
 from app.services.external.minio_service import MinioService
 from app.config.logger import logger
 
@@ -13,24 +13,25 @@ from app.config.logger import logger
 def process_documents(
     tender_id: uuid.UUID,
     minio_service: MinioService,
-) -> list[ProcessedFile]:
+) -> list[ProcessedDocument]:
     tender_files = list(minio_service.get_tender_files(tender_id))
     logger.info(f"Starting document processing for {len(tender_files)} files")
 
-    processed_files: list[ProcessedFile] = []
+    processed_documents: list[ProcessedDocument] = []
 
-    docling_processed_files, incomplete_files = convert_to_markdown(
+    processed_documents, incomplete_documents = convert_to_markdown(
         tender_id, minio_service, True
     )
-    processed_files.extend(docling_processed_files)
 
     # Second pass with OCR for incomplete files
-    if incomplete_files:
+    if incomplete_documents:
         logger.info(
-            f"Starting second pass (with OCR) for {len(incomplete_files)} incomplete files"
+            f"Starting second pass (with OCR) for {len(incomplete_documents)} incomplete documents"
         )
-        ocr_processed_files, _ = convert_to_markdown(tender_id, minio_service, False)
-        processed_files.extend(ocr_processed_files)
+        ocr_processed_documents, _ = convert_to_markdown(
+            tender_id, minio_service, False
+        )
+        processed_documents.extend(ocr_processed_documents)
 
-    logger.info(f"Successfully processed {len(processed_files)} files total")
-    return processed_files
+    logger.info(f"Successfully processed {len(processed_documents)} documents total")
+    return processed_documents

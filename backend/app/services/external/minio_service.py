@@ -2,10 +2,8 @@ import uuid
 from io import BytesIO
 
 from fastapi import UploadFile
-from minio import Minio, S3Error
+from minio import Minio
 from app.config.settings import SettingsDep
-
-from app.models.file import File, ProcessedFile
 
 
 def _get_tender_prefix(tender_id: uuid.UUID) -> str:
@@ -27,9 +25,7 @@ class MinioService:
             secure=settings.MINIO_SECURE == "True",
         )
 
-    def upload_tender_file(self, tender_id: uuid.UUID, file: UploadFile):
-
-        file_id = uuid.uuid4()
+    def upload_tender_file(self, tender_id: uuid.UUID, file: UploadFile, file_id: uuid.UUID):
         file_size = file.size
         content_type = file.content_type
 
@@ -77,3 +73,22 @@ class MinioService:
                 yield obj.object_name, response.read()
             finally:
                 response.close()
+    
+    def upload_processed_file(
+            self,
+            tender_id: uuid.UUID,
+            document_name: str,
+            content: str,
+            content_type: str = "text/plain",
+    ) -> None:
+        object_name = f"{_get_tender_prefix(tender_id)}processed/{document_name}"
+
+        data = BytesIO(content.encode("utf-8"))
+        file_size = data.getbuffer().nbytes
+
+        if not file_size:
+            raise ValueError("File size must be set")
+
+        self.__client.put_object(
+            self._bucket, object_name, data, file_size, content_type
+        )

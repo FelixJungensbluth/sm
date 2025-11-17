@@ -15,11 +15,15 @@ from fastapi import (
 
 from app.models.tender import Tender
 from app.processing_pipeline import TenderProcessingPipeline
-from app.repos.shared import get_tender_repo
+from app.repos.shared import get_document_repo, get_tender_repo
 from app.repos.tender_repo import TenderRepo
 from app.config.logger import logger
 from app.services.external.minio_service import MinioService
 from app.services.shared import get_minio_service
+from app.repos.document_repo import DocumentRepo
+from app.models.document import Document
+from app.config.app_config import get_llm_provider
+from app.llm.provider.base_llm import BaseLLM
 
 router = APIRouter(
     prefix="/tenders",
@@ -36,13 +40,24 @@ async def create_tenders(
     background_tasks: BackgroundTasks,
     minio_service: MinioService = Depends(get_minio_service),
     tender_repo: TenderRepo = Depends(get_tender_repo),
+    document_repo: DocumentRepo = Depends(get_document_repo),
+    llm_provider: BaseLLM = Depends(get_llm_provider),
 ):
     tender = Tender.create(name)
     tender_repo.create_tender(tender)
 
+    documents: list[Document] = []
     try:
         for file in files:
-            minio_service.upload_tender_file(tender.id, file)
+            document_id = uuid.uuid4()
+            minio_service.upload_tender_file(tender.id, file, document_id)
+            documents.append(
+                Document(id=document_id, tender_id=tender.id, name=file.filename or "")
+            )
+
+        if documents:
+            document_repo.create_documents(documents)
+
     except Exception as e:
         logger.exception(f"Error uploading files for {tender.id}: {e}")
         tender_repo.delete_tender(tender.id)
@@ -52,12 +67,12 @@ async def create_tenders(
             detail="Failed to upload files",
         )
 
-    pipeline = TenderProcessingPipeline(minio_service)
+    pipeline = TenderProcessingPipeline(minio_service, llm_provider)
     loop = asyncio.get_event_loop()
     background_tasks.add_task(
         loop.run_in_executor,
         thread_pool,
-        lambda: asyncio.run(pipeline.analyze_tender(tender)),
+        lambda: asyncio.run(pipeline.run(tender, documents)),
     )
 
 

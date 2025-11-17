@@ -29,16 +29,20 @@ from docling.pipeline.simple_pipeline import SimplePipeline
 from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
 from docling_core.types.io import DocumentStream
 
-from app.models.file import ProcessedFile
+from app.models.document import ProcessedDocument
 from app.services.external.minio_service import MinioService
 from app.config.logger import logger
+
+MIN_CONTENT_CHARS = 300
+_RE_MULTI_NEWLINE = re.compile(r"\n\s*\n\s*\n+")
+_RE_SENTENCE_SPACING = re.compile(r"([.!?])\s*([A-ZÄÖÜ])")
 
 
 def export_documents(
     document_streams: list[DocumentStream],
     conv_results: Iterable[ConversionResult],
-) -> tuple[list[ProcessedFile], list[str]]:
-    processed_files: list[ProcessedFile] = []
+) -> tuple[list[ProcessedDocument], list[str]]:
+    processed_files: list[ProcessedDocument] = []
     incomplete_files: list[str] = []
 
     success_count = 0
@@ -58,7 +62,8 @@ def export_documents(
                 incomplete_files.append(name)
                 continue
 
-            processed_files.append(ProcessedFile(name, content))
+            document_id = uuid.UUID(name.split("/")[-1])
+            processed_files.append(ProcessedDocument(document_id, content))
 
         elif conv_res.status == ConversionStatus.PARTIAL_SUCCESS:
             logger.info(
@@ -95,7 +100,7 @@ def convert_to_markdown(
     tender_id: uuid.UUID,
     minio_service: MinioService,
     use_ocr: bool = False,
-) -> tuple[list[ProcessedFile], list[str]]:
+) -> tuple[list[ProcessedDocument], list[str]]:
 
     converter = get_converter(use_ocr)
     document_streams = create_document_streams(tender_id, minio_service)

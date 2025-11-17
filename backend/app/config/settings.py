@@ -20,7 +20,6 @@ class Settings(BaseSettings):
     MONGO_PORT: int = 27017
     MONGO_USERNAME: str = ""
     MONGO_PASSWORD: str = ""
-    MONGO_AUTH_SOURCE: str = "admin"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
