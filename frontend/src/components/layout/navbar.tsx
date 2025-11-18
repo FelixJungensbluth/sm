@@ -15,6 +15,7 @@ import {
   Plus,
   Table,
   LayoutGrid,
+  MessageSquare,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { SearchBar } from '@/components/search-bar';
@@ -104,6 +105,11 @@ export function Navbar() {
               >
                 <Plus className="h-4 w-4" />
               </Button>
+            <Button variant="ghost" size="icon" asChild aria-label="Chat">
+              <Link to="/chat">
+                <MessageSquare className="h-4 w-4" />
+              </Link>
+            </Button>
             <Button variant="ghost" size="icon" asChild aria-label="Settings">
               <Link
                 to={

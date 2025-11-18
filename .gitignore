@@ -25,3 +25,5 @@ dist-ssr
 .vite 
 todo.md
 docs/*
+backend/.env
+frontend/.env

@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ProjectTasks } from "@/pages/project-tasks";
 import { Settings } from "@/pages/settings";
 import { TaskDetail } from "@/pages/task-detail";
+import { Chat } from "@/pages/chat";
 import { NormalLayout } from "@/components/layout/NormalLayout";
 import {
   UserSystemProvider,
@@ -26,7 +27,7 @@ function AppContent() {
   }
 
   return (
-    <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
+    <ThemeProvider initialTheme={ThemeMode.LIGHT}>
       <SearchProvider>
         <div className="h-screen flex flex-col bg-background">
           <Routes>
@@ -41,6 +42,7 @@ function AppContent() {
               />
               <Route path="/" element={<ProjectTasks />} />
               <Route path="/tasks/:taskId" element={<TaskDetail />} />
+              <Route path="/chat" element={<Chat />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/settings/projects" element={<Settings />} />
             </Route>

@@ -19,11 +19,13 @@ from app.repos.shared import get_document_repo, get_tender_repo
 from app.repos.tender_repo import TenderRepo
 from app.config.logger import logger
 from app.services.external.minio_service import MinioService
-from app.services.shared import get_minio_service
+from app.services.shared import get_minio_service, get_rag_service
 from app.repos.document_repo import DocumentRepo
 from app.models.document import Document
 from app.config.app_config import get_llm_provider
 from app.llm.provider.base_llm import BaseLLM
+from app.services.rag.rag_service import RagService
+from app.config.settings import SettingsDep
 
 router = APIRouter(
     prefix="/tenders",
@@ -38,10 +40,10 @@ async def create_tenders(
     files: Annotated[list[UploadFile], File()],
     name: Annotated[str, Form()],
     background_tasks: BackgroundTasks,
+    settings: SettingsDep,
     minio_service: MinioService = Depends(get_minio_service),
     tender_repo: TenderRepo = Depends(get_tender_repo),
     document_repo: DocumentRepo = Depends(get_document_repo),
-    llm_provider: BaseLLM = Depends(get_llm_provider),
 ):
     tender = Tender.create(name)
     tender_repo.create_tender(tender)
@@ -67,7 +69,7 @@ async def create_tenders(
             detail="Failed to upload files",
         )
 
-    pipeline = TenderProcessingPipeline(minio_service, llm_provider)
+    pipeline = TenderProcessingPipeline(settings=settings, minio_service=minio_service, tender_repo=tender_repo)
     loop = asyncio.get_event_loop()
     background_tasks.add_task(
         loop.run_in_executor,

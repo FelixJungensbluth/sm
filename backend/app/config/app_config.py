@@ -1,10 +1,9 @@
 import yaml
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Optional
 from functools import lru_cache
-from fastapi import Depends
 
-from app.config.settings import get_settings, SettingsDep
+from app.config.settings import SettingsDep
 from app.llm.provider.base_llm import BaseLLM
 from app.llm.provider.ollama import Ollama
 from app.llm.provider.openai import OpenAi
@@ -17,16 +16,14 @@ def _load_config() -> dict:
         return yaml.safe_load(f)
 
 
-def init_llm_provider(
+def get_llm_provider(
     settings: SettingsDep,
-    provider_name: Optional[str] = None,
-    model_name: Optional[str] = None,
 ) -> BaseLLM:
     config = _load_config()
     llm_config = config.get("llm", {})
     
-    provider = provider_name or llm_config.get("provider")
-    model = model_name or llm_config.get("default_model")
+    provider = llm_config.get("provider")
+    model = llm_config.get("default_model")
     
     if not provider:
         raise ValueError("LLM provider not specified in config or parameter")
@@ -59,7 +56,3 @@ def init_llm_provider(
             f"Available providers: ollama, openai"
         )
 
-
-def get_llm_provider(settings: SettingsDep) -> BaseLLM:
-    """FastAPI dependency to get LLM provider."""
-    return init_llm_provider(settings=settings)

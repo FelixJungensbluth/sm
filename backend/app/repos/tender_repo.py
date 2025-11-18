@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 import uuid
 
 from app.config.logger import logger
-from app.models.tender import Tender
+from app.models.tender import Tender, TenderUpdate
+from app.models.base_information import BaseInformation
 
 
 class TenderRepo:
@@ -37,17 +38,32 @@ class TenderRepo:
 
         return created_tender if created_tender else None
 
-    def update_tender(self, tender: Tender) -> Optional[Tender]:
-        doc = self._tender_to_doc(tender)
-        update_doc = {k: v for k, v in doc.items() if k != "_id"}
+    def update_tender(self, tender_id: uuid.UUID, tender_update: TenderUpdate) -> Optional[Tender]:
+        update_doc = {}
+        
+        if tender_update.title is not None:
+            update_doc["title"] = tender_update.title
+        
+        if tender_update.description is not None:
+            update_doc["description"] = tender_update.description
+        
+        if tender_update.base_information is not None:
+            update_doc["base_information"] = [
+                info.model_dump() for info in tender_update.base_information
+            ]
+        
+        if not update_doc:
+            # No fields to update, return existing tender
+            return self.get_tender_by_id(tender_id)
+        
         update_doc["updated_at"] = datetime.now(timezone.utc)
 
         result = self.collection.update_one(
-            {"id": str(tender.id)}, {"$set": update_doc}
+            {"id": str(tender_id)}, {"$set": update_doc}
         )
 
         if result.matched_count > 0:
-            updated_doc = self.collection.find_one({"id": str(tender.id)})
+            updated_doc = self.collection.find_one({"id": str(tender_id)})
             return self._doc_to_tender(updated_doc) if updated_doc else None
         return None
 
@@ -95,10 +111,23 @@ class TenderRepo:
             elif not isinstance(updated_at, datetime):
                 updated_at = datetime.now(timezone.utc)
 
+            # Convert base_information from list of dicts to list of BaseInformation objects
+            base_information = []
+            base_info_data = doc.get("base_information", [])
+            if isinstance(base_info_data, list):
+                for info_dict in base_info_data:
+                    if isinstance(info_dict, dict):
+                        try:
+                            base_information.append(BaseInformation(**info_dict))
+                        except Exception as e:
+                            logger.warning(f"Error parsing base_information item: {e}")
+                            continue
+
             return Tender(
                 id=tender_id,
                 title=doc.get("title", ""),
                 description=doc.get("description", ""),
+                base_information=base_information,
                 created_at=created_at,
                 updated_at=updated_at,
             )

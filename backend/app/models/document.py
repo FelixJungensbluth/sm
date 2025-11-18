@@ -11,5 +11,5 @@ class Document(BaseModel):
 
 @dataclass
 class ProcessedDocument:
-    document_id: uuid.UUID
+    document: Document
     content: str

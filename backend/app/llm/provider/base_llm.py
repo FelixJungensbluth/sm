@@ -1,8 +1,15 @@
 from abc import ABC, abstractmethod
 from typing import List
 
+from attr import dataclass
+
 from app.config.settings import SettingsDep
 
+
+@dataclass(frozen=True)
+class LlmRequest:
+    role: str
+    message: str
 
 class BaseLLM(ABC):
     """Abstract base class for LLM implementations (OpenAI, Ollama, etc.)"""
@@ -33,6 +40,32 @@ class BaseLLM(ABC):
             List of response dictionaries. Each dictionary should contain either:
             - "response": The successful response data
             - "error": Error information if the request failed
+        """
+        pass
+    
+    @abstractmethod
+    def create_request(self, requests: List[LlmRequest]) -> List[dict]:
+        """
+        Create a request for the LLM provider.
+
+        Args:
+            request: The request to create
+
+        Returns:
+            List of request dictionaries.
+        """
+        pass
+
+    @abstractmethod
+    def get_output(self, response: dict) -> str:
+        """
+        Get the output from the response.
+
+        Args:
+            response: The response from the LLM provider.
+
+        Returns:
+            The output from the response.
         """
         pass
 

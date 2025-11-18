@@ -2,7 +2,7 @@ from typing import Dict, List, Optional
 
 from app.config.settings import SettingsDep
 from app.llm.parallel_llm_processor import RequestProcessor
-from app.llm.provider.base_llm import BaseLLM
+from app.llm.provider.base_llm import BaseLLM, LlmRequest
 
 
 # Default model configs - can be overridden in config.yaml
@@ -47,3 +47,15 @@ class OpenAi(BaseLLM):
         self, requests: List[dict], max_attempts: int = 2
     ) -> List[dict]:
         return await self._processor.process_requests(requests, max_attempts)
+
+    def create_request(self, requests: List[LlmRequest]) -> List[dict]:
+        return [
+            {
+                "model": self._model_name,
+                "messages": [{"role": r.role, "content": r.message}],
+            }
+            for r in requests
+        ]
+
+    def get_output(self, response: dict) -> str:
+        return response["response"]["output"][1]["content"][0]["text"]
