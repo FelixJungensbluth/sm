@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate-api": "swagger-typescript-api generate --generate-union-enums --module-name-first-tag --path http://127.0.0.1:8000/openapi.json --output src/services/api --name api.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -30,6 +31,7 @@
     "react-i18next": "^16.2.4",
     "react-resizable-panels": "^3.0.6",
     "react-router-dom": "^7.9.5",
+    "swagger-typescript-api": "^13.2.16",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7"
   },

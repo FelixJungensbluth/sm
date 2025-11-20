@@ -56,6 +56,4 @@ class Ollama(BaseLLM):
         ]
 
     def get_output(self, response: dict) -> str:
-        # The response is wrapped as {"task_id": ..., "response": {...}}
-        # The Ollama API response structure is: {"model": ..., "message": {"role": ..., "content": ...}}
         return response["response"]["message"]["content"]

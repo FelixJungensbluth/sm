@@ -1,31 +1,17 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { ProjectTasks } from "@/pages/project-tasks";
+import { Tenders } from "@/pages/tenders";
 import { Settings } from "@/pages/settings";
-import { TaskDetail } from "@/pages/task-detail";
+import { TenderDetail } from "@/pages/tender-details";
 import { Chat } from "@/pages/chat";
 import { NormalLayout } from "@/components/layout/NormalLayout";
-import {
-  UserSystemProvider,
-  useUserSystem,
-} from "@/components/config-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SearchProvider } from "@/contexts/search-context";
 import { ProjectProvider } from "@/contexts/project-context";
-import { Loader } from "@/components/ui/loader";
 import { ThemeMode } from "./lib/types";
 import { HotkeysProvider } from "react-hotkeys-hook";
+import { ApiProvider } from "./contexts/api-context";
 
 function AppContent() {
-  const { config, loading } = useUserSystem();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader message="Loading..." size={32} />
-      </div>
-    );
-  }
-
   return (
     <ThemeProvider initialTheme={ThemeMode.LIGHT}>
       <SearchProvider>
@@ -34,14 +20,16 @@ function AppContent() {
             <Route element={<NormalLayout />}>
               <Route
                 path="/projects/:projectId/tasks"
-                element={<ProjectTasks />}
+                element={<Tenders />}
               />
               <Route
                 path="/projects/:projectId/tasks/:taskId"
-                element={<TaskDetail />}
+                element={<TenderDetail />}
               />
-              <Route path="/" element={<ProjectTasks />} />
-              <Route path="/tasks/:taskId" element={<TaskDetail />} />
+              <Route path="/" element={<Tenders />} />
+              <Route path="/tasks/:taskId" element={<TenderDetail />} />
+              <Route path="/tenders/:tenderId" element={<TenderDetail />} />
+              <Route path="/projects/:projectId/tenders/:tenderId" element={<TenderDetail />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/settings/projects" element={<Settings />} />
@@ -56,13 +44,13 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <UserSystemProvider>
         <ProjectProvider>
           <HotkeysProvider initiallyActiveScopes={["*", "global", "kanban"]}>
-            <AppContent />
+            <ApiProvider>
+              <AppContent />
+            </ApiProvider>
           </HotkeysProvider>
         </ProjectProvider>
-      </UserSystemProvider>
     </BrowserRouter>
   );
 }

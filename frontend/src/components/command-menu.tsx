@@ -4,15 +4,15 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { TaskWithAttemptStatus } from '@/lib/types';
+import type { TenderWithAttemptStatus } from '@/lib/types';
 
 interface CommandMenuProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateTask?: () => void;
-  onDeleteTask?: (taskId: string) => void;
-  selectedTask?: TaskWithAttemptStatus | null;
-  tasks?: TaskWithAttemptStatus[];
+  onCreateTender?: () => void;
+  onDeleteTender?: (tenderId: string) => void;
+  selectedTender?: TenderWithAttemptStatus | null;
+  tenders?: TenderWithAttemptStatus[];
 }
 
 interface Command {
@@ -26,10 +26,10 @@ interface Command {
 export function CommandMenu({
   open,
   onOpenChange,
-  onCreateTask,
-  onDeleteTask,
-  selectedTask,
-  tasks = [],
+  onCreateTender,
+  onDeleteTender,
+  selectedTender,
+  tenders = [],
 }: CommandMenuProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -56,36 +56,36 @@ export function CommandMenu({
   const commands = useMemo<Command[]>(() => {
     const cmds: Command[] = [];
 
-    // Create task command
-    if (onCreateTask) {
+    // Create tender command
+    if (onCreateTender) {
       cmds.push({
-        id: 'create-task',
-        label: 'Create Task',
+        id: 'create-tender',
+        label: 'Create Tender',
         icon: <Plus className="h-4 w-4" />,
         action: () => {
-          onCreateTask();
+          onCreateTender();
           onOpenChange(false);
         },
-        keywords: ['create', 'add', 'new', 'task'],
+        keywords: ['create', 'add', 'new', 'tender'],
       });
     }
 
-    // Delete selected task command
-    if (onDeleteTask && selectedTask) {
+    // Delete selected tender command
+    if (onDeleteTender && selectedTender) {
       cmds.push({
-        id: 'delete-task',
-        label: `Delete Task: ${selectedTask.title}`,
+        id: 'delete-tender',
+        label: `Delete Tender: ${selectedTender.title}`,
         icon: <Trash2 className="h-4 w-4" />,
         action: () => {
-          onDeleteTask(selectedTask.id);
+          onDeleteTender(selectedTender.id);
           onOpenChange(false);
         },
-        keywords: ['delete', 'remove', 'task'],
+        keywords: ['delete', 'remove', 'tender'],
       });
     }
 
     return cmds;
-  }, [onCreateTask, onDeleteTask, selectedTask, onOpenChange]);
+  }, [onCreateTender, onDeleteTender, selectedTender, onOpenChange]);
 
   // Filter commands based on search query
   const filteredCommands = useMemo(() => {

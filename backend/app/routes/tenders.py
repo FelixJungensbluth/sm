@@ -1,6 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import Annotated
+from typing import Annotated, List, Optional
 import uuid
 from fastapi import (
     APIRouter,
@@ -13,7 +13,7 @@ from fastapi import (
     status,
 )
 
-from app.models.tender import Tender
+from app.models.tender import Tender, TenderUpdate
 from app.processing_pipeline import TenderProcessingPipeline
 from app.repos.shared import get_document_repo, get_tender_repo
 from app.repos.tender_repo import TenderRepo
@@ -35,7 +35,7 @@ router = APIRouter(
 thread_pool = ThreadPoolExecutor(max_workers=4)
 
 
-@router.post("/", status_code=201)
+@router.post("/", status_code=201, operation_id="create_tender")
 async def create_tenders(
     files: Annotated[list[UploadFile], File()],
     name: Annotated[str, Form()],
@@ -69,7 +69,9 @@ async def create_tenders(
             detail="Failed to upload files",
         )
 
-    pipeline = TenderProcessingPipeline(settings=settings, minio_service=minio_service, tender_repo=tender_repo)
+    pipeline = TenderProcessingPipeline(
+        settings=settings, minio_service=minio_service, tender_repo=tender_repo
+    )
     loop = asyncio.get_event_loop()
     background_tasks.add_task(
         loop.run_in_executor,
@@ -78,24 +80,33 @@ async def create_tenders(
     )
 
 
-@router.get("/", status_code=200)
+@router.get("/", status_code=200, operation_id="get_tenders")
 async def get_tenders(
     tender_repo: TenderRepo = Depends(get_tender_repo),
-):
+) -> List[Tender]:
     return tender_repo.get_tenders()
 
 
-@router.get("/{tender_id}", status_code=200)
-async def get_tender(
+@router.get("/{tender_id}", status_code=200, operation_id="get_tender_by_id")
+async def get_tender_by_id(
     tender_id: uuid.UUID,
     tender_repo: TenderRepo = Depends(get_tender_repo),
-):
+) -> Optional[Tender]:
     return tender_repo.get_tender_by_id(tender_id)
 
 
-@router.delete("/{tender_id}", status_code=200)
+@router.delete("/{tender_id}", status_code=200, operation_id="delete_tender")
 async def delete_tender(
     tender_id: uuid.UUID,
     tender_repo: TenderRepo = Depends(get_tender_repo),
 ):
     return tender_repo.delete_tender(tender_id)
+
+
+@router.put("/{tender_id}", status_code=200, operation_id="update_tender")
+async def update_tender(
+    tender_id: uuid.UUID,
+    tender_update: TenderUpdate,
+    tender_repo: TenderRepo = Depends(get_tender_repo),
+):
+    return tender_repo.update_tender(tender_id, tender_update)

@@ -14,41 +14,37 @@ import { Label } from '@/components/ui/label';
 import { FileDropzone } from '@/components/ui/file-dropzone';
 import { type FileWithPath } from '@/hooks/use-file-drop';
 
-interface CreateTaskDialogProps {
+interface CreateTenderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId?: string | null;
-  onCreateTask: (data: { title: string; description: string }) => void;
+  onCreateTender: (data: { title: string; description: string; files: File[] }) => void;
   isLoading?: boolean;
 }
 
-export function CreateTaskDialog({
+export function CreateTenderDialog({
   open,
   onOpenChange,
-  projectId,
-  onCreateTask,
+  onCreateTender,
   isLoading = false,
-}: CreateTaskDialogProps) {
+}: CreateTenderDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<FileWithPath[]>([]);
 
-  console.log('CreateTaskDialog render - open:', open, 'projectId:', projectId);
 
   if (!open) {
-    console.log('Dialog is closed, not rendering');
     return null;
   }
-
-  console.log('Dialog should be visible now');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    onCreateTask({
+    onCreateTender({
       title: title.trim(),
       description: description.trim() || '',
+      files: selectedFiles.map(f => f.file),
     });
 
     // Reset form
@@ -80,9 +76,9 @@ export function CreateTaskDialog({
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Create New Task</DialogTitle>
+            <DialogTitle>Create New Tender</DialogTitle>
             <DialogDescription>
-              Add a new task to your kanban board.
+              Add a new tender to your kanban board.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -90,7 +86,7 @@ export function CreateTaskDialog({
               <Label htmlFor="title">Title *</Label>
               <Input
                 id="title"
-                placeholder="Enter task title"
+                placeholder="Enter tender title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 autoFocus
@@ -101,7 +97,7 @@ export function CreateTaskDialog({
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
-                placeholder="Enter task description (optional)"
+                placeholder="Enter tender description (optional)"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
@@ -122,7 +118,7 @@ export function CreateTaskDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!title.trim() || isLoading}>
-              {isLoading ? 'Creating...' : 'Create Task'}
+              {isLoading ? 'Creating...' : 'Create Tender'}
             </Button>
           </DialogFooter>
         </form>

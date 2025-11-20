@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import uuid
 
 from app.config.logger import logger
-from app.models.tender import Tender, TenderUpdate
+from app.models.tender import Tender, TenderUpdate, TenderStatus
 from app.models.base_information import BaseInformation
 
 
@@ -46,6 +46,9 @@ class TenderRepo:
         
         if tender_update.description is not None:
             update_doc["description"] = tender_update.description
+        
+        if tender_update.status is not None:
+            update_doc["status"] = tender_update.status.value
         
         if tender_update.base_information is not None:
             update_doc["base_information"] = [
@@ -123,11 +126,27 @@ class TenderRepo:
                             logger.warning(f"Error parsing base_information item: {e}")
                             continue
 
+            # Convert status from string to TenderStatus enum
+            status_value = doc.get("status")
+            if isinstance(status_value, str):
+                try:
+                    status = TenderStatus(status_value)
+                except ValueError:
+                    # If status doesn't match any enum value, default to in_review
+                    logger.warning(f"Invalid status value '{status_value}', defaulting to in_review")
+                    status = TenderStatus.in_review
+            elif isinstance(status_value, TenderStatus):
+                status = status_value
+            else:
+                # Default to in_review if status is missing or invalid
+                status = TenderStatus.in_review
+
             return Tender(
                 id=tender_id,
                 title=doc.get("title", ""),
                 description=doc.get("description", ""),
                 base_information=base_information,
+                status=status,
                 created_at=created_at,
                 updated_at=updated_at,
             )

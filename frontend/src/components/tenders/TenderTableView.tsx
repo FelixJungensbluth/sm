@@ -7,37 +7,36 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import type { TaskWithAttemptStatus, TaskStatus } from '@/lib/types';
+import type { TenderStatus, Tender } from '@/lib/types';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { statusLabels, statusBoardColors } from '@/utils/status-labels';
 import { cn } from '@/lib/utils';
 
-type Task = TaskWithAttemptStatus;
 
-interface TaskTableViewProps {
-  tasks: Task[];
-  onViewTaskDetails: (task: Task) => void;
-  selectedTask?: Task;
-  onCreateTask?: () => void;
+interface TenderTableViewProps {
+  tenders: Tender[];
+  onViewTenderDetails: (tender: Tender) => void;
+  selectedTender?: Tender;
+  onCreateTender?: () => void;
   projectId: string;
 }
 
-function TaskTableView({
-  tasks,
-  onViewTaskDetails,
-  selectedTask,
-  onCreateTask,
+function TenderTableView({
+  tenders,
+  onViewTenderDetails,
+  selectedTender,
+  onCreateTender,
   projectId,
-}: TaskTableViewProps) {
+}: TenderTableViewProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const columns = useMemo<ColumnDef<Task>[]>(
+  const columns = useMemo<ColumnDef<Tender>[]>(
     () => [
       {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => {
-          const status = row.original.status as TaskStatus;
+          const status = row.original.status as TenderStatus;
           const color = statusBoardColors[status];
           const label = statusLabels[status];
           return (
@@ -55,13 +54,13 @@ function TaskTableView({
         accessorKey: 'title',
         header: 'Title',
         cell: ({ row }) => {
-          const task = row.original;
+          const tender = row.original;
           return (
             <div className="flex flex-col gap-1">
-              <h4 className="font-light text-sm">{task.title}</h4>
-              {task.description && (
+              <h4 className="font-light text-sm">{tender.title}</h4>
+              {tender.description && (
                 <p className="text-xs text-secondary-foreground line-clamp-2">
-                  {task.description}
+                  {tender.description}
                 </p>
               )}
             </div>
@@ -84,17 +83,17 @@ function TaskTableView({
         id: 'indicators',
         header: '',
         cell: ({ row }) => {
-          const task = row.original;
+          const tender = row.original;
           return (
             <div className="flex items-center gap-1">
-              {task.has_in_progress_attempt && (
+              {tender.has_in_progress_attempt && (
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
               )}
-              {task.has_merged_attempt && (
+              {tender.has_merged_attempt && (
                 <CheckCircle className="h-4 w-4 text-green-500" />
               )}
-              {task.last_attempt_failed &&
-                !task.has_merged_attempt && (
+              {tender.last_attempt_failed &&
+                !tender.has_merged_attempt && (
                   <XCircle className="h-4 w-4 text-destructive" />
                 )}
             </div>
@@ -106,7 +105,7 @@ function TaskTableView({
   );
 
   const table = useReactTable({
-    data: tasks,
+    data: tenders,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -155,13 +154,13 @@ function TaskTableView({
                   colSpan={columns.length}
                   className="px-4 py-8 text-center text-sm text-secondary-foreground"
                 >
-                  No tasks found
+                  No tenders found
                 </td>
               </tr>
             ) : (
               table.getRowModel().rows.map((row) => {
-                const task = row.original;
-                const isSelected = selectedTask?.id === task.id;
+                const tender = row.original;
+                const isSelected = selectedTender?.id === tender.id;
                 return (
                   <tr
                     key={row.id}
@@ -172,7 +171,7 @@ function TaskTableView({
                     style={{
                       backgroundColor: 'hsl(var(--muted))',
                     }}
-                    onClick={() => onViewTaskDetails(task)}
+                    onClick={() => onViewTenderDetails(tender)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td
@@ -196,5 +195,5 @@ function TaskTableView({
   );
 }
 
-export default memo(TaskTableView);
+export default memo(TenderTableView);
 
