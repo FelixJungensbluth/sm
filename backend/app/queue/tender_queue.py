@@ -37,12 +37,13 @@ def enqueue_tender_job(
         type="tender_processing",
         tender_id=tender_id,
         document_ids=document_ids,
-        pipeline=["index_documents", "extract_base_information"],
+        pipeline=["index_documents", "extract_base_information", "extract_requirements"],
         current_step_index=0,
         status=TenderProcessingStatus.queued,
         step_status=[
             StepStatus(name="index_documents", status="pending", last_error=None),
             StepStatus(name="extract_base_information", status="pending", last_error=None),
+            StepStatus(name="extract_requirements", status="pending", last_error=None),
         ],
         attempts=0,
         max_attempts=5,
@@ -52,7 +53,6 @@ def enqueue_tender_job(
         updated_at=now,
     )
     
-    # Convert to dict for MongoDB, excluding None id
     doc = job.model_dump(by_alias=True, exclude_none=True)
     result = tender_jobs.insert_one(doc)
     return result.inserted_id

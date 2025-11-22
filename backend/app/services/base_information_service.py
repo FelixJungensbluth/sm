@@ -344,8 +344,7 @@ class BaseInformationService:
         base_information_requests = await self.create_requests(tender_id)
 
         llm_requests = [req.request for req in base_information_requests]
-        requests = self.llm_provider.create_request(llm_requests)
-        results = await self.llm_provider.process_requests(requests)
+        results = await self.llm_provider.process_requests(llm_requests)
         parsed_results = self.parse_results(results, base_information_requests, 0)
 
         return list(parsed_results.values()) if parsed_results else []
@@ -362,7 +361,7 @@ class BaseInformationService:
             field_name = req.field_name
 
             try:
-                output = self.llm_provider.get_output(successful_response)
+                output = self.llm_provider.get_output(successful_response, only_json=True)
                 parsed_result: BaseInformation = self.parser.parse(output)
 
                 field_name = parsed_result.field_name

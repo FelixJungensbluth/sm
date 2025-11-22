@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 from app.config.settings import SettingsDep
 from app.llm.provider.base_llm import BaseLLM, LlmRequest
 from app.llm.parallel_llm_processor import RequestProcessor
+from app.llm.utils import extract_json_from_content
 from app.config.logger import logger
 
 
@@ -39,8 +40,9 @@ class Ollama(BaseLLM):
         )
 
     async def process_requests(
-        self, requests: List[dict], max_attempts: int = 2
+        self, llm_requests: List[LlmRequest], max_attempts: int = 2
     ) -> List[dict]:
+        requests = self.create_request(llm_requests)
         return await self._processor.process_requests(requests, max_attempts)
 
     def create_request(self, requests: List[LlmRequest]) -> List[dict]:
@@ -49,11 +51,16 @@ class Ollama(BaseLLM):
                 "model": self._model_name,
                 "messages": [{"role": r.role, "content": r.message}],
                 "stream": False,
-                "think": True,
+                "think": False,
                 "level": "medium"
             }
             for r in requests
         ]
 
-    def get_output(self, response: dict) -> str:
-        return response["response"]["message"]["content"]
+    def get_output(self, response: dict, only_json: bool = False) -> str:
+        content = response["response"]["message"]["content"]
+        
+        if only_json:
+            return extract_json_from_content(content)
+        
+        return content

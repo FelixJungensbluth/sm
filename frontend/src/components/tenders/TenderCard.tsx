@@ -41,7 +41,6 @@ export function TenderCard({
   }, [isOpen]);
 
   const baseInfoFields = useMemo(() => {
-    // Use tender.base_information if available, otherwise fall back to prop
     const info = tender.base_information || baseInformation || [];
     
     if (!info || info.length === 0) {
@@ -79,14 +78,13 @@ export function TenderCard({
     >
       {/* Title */}
       <div className="flex flex-1 gap-2 items-center min-w-0">
-        <h4 className="flex-1 min-w-0 line-clamp-2 font-light text-sm">
+        <h4 className="flex-1 min-w-0 line-clamp-2 font-medium text-sm ">
           {tender.title}
         </h4>
       </div>
       
-      {/* Description */}
       {(tender.description || baseInfoFields.description) && (
-        <p className="flex-1 text-sm text-secondary-foreground break-words mt-1">
+        <p className="flex-1 text-xs text-secondary-foreground break-words mt-1 font-light">
           {(() => {
             const desc = baseInfoFields.description || tender.description || '';
             return desc.length > 130 ? `${desc.substring(0, 130)}...` : desc;

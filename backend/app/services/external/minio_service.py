@@ -1,3 +1,6 @@
+from minio.error import S3Error
+from app.models.document import ProcessedDocument
+from app.models.document import Document
 import uuid
 from io import BytesIO
 
@@ -92,3 +95,21 @@ class MinioService:
         self.__client.put_object(
             self._bucket, object_name, data, file_size, content_type
         )
+
+    
+    def get_processed_files(self, tender_documents: list[Document]) -> list[ProcessedDocument]:
+        docs: list[ProcessedDocument] = []
+
+        for doc in tender_documents:
+            object_name = f"{_get_tender_prefix(doc.tender_id)}processed/{doc.id}"
+
+            try:
+                resp = self.__client.get_object(self._bucket, object_name)
+                with resp:
+                    content = resp.read().decode("utf-8")
+                docs.append(ProcessedDocument(doc, content))
+            except S3Error as e:
+                if e.code != "NoSuchKey":
+                    raise e
+
+        return docs

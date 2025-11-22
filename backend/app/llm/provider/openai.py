@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 from app.config.settings import SettingsDep
 from app.llm.parallel_llm_processor import RequestProcessor
 from app.llm.provider.base_llm import BaseLLM, LlmRequest
+from app.llm.utils import extract_json_from_content
 
 
 # Default model configs - can be overridden in config.yaml
@@ -44,8 +45,9 @@ class OpenAi(BaseLLM):
         )
 
     async def process_requests(
-        self, requests: List[dict], max_attempts: int = 2
+        self, llm_requests: List[LlmRequest], max_attempts: int = 2
     ) -> List[dict]:
+        requests = self.create_request(llm_requests)
         return await self._processor.process_requests(requests, max_attempts)
 
     def create_request(self, requests: List[LlmRequest]) -> List[dict]:
@@ -57,5 +59,10 @@ class OpenAi(BaseLLM):
             for r in requests
         ]
 
-    def get_output(self, response: dict) -> str:
-        return response["response"]["output"][1]["content"][0]["text"]
+    def get_output(self, response: dict, only_json: bool = False) -> str:
+        content = response["response"]["output"][1]["content"][0]["text"]
+        
+        if only_json:
+            return extract_json_from_content(content)
+        
+        return content

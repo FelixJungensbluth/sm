@@ -1,3 +1,5 @@
+from app.repos.requirements_repo import RequirementsRepo
+from app.services.requirements_extraction_service import RequirementExtractionService
 from app.models.tender import TenderUpdate
 from app.config.app_config import get_llm_provider
 from app.services.base_information_service import BaseInformationService
@@ -37,6 +39,8 @@ class WorkerContext:
         self.rag_service = RagService(self.settings)
         self.llm_provider = get_llm_provider(self.settings)
         self.base_information_service = BaseInformationService(self.settings, self.llm_provider, self.rag_service)
+        self.requirement_service = RequirementExtractionService(self.settings, self.llm_provider)
+        self.requirements_repo = RequirementsRepo(self.mongo_client)
 
 
 ctx: WorkerContext | None = None
@@ -82,19 +86,38 @@ async def run_extract_base_information(job: dict) -> None:
             tender_update = TenderUpdate(base_information=base_information)
             context.tender_repo.update_tender(tender.id, tender_update)
 
+async def run_extract_requirements(job: dict) -> None:
+    context = get_ctx()
+    tender_id = job["tender_id"]
+    tender: Tender | None = context.tender_repo.get_tender_by_id(uuid.UUID(tender_id))
+    if tender:
+        documents = context.document_repo.get_documents_by_tender_id(tender.id)
+        processed_documents = context.minio_service.get_processed_files(documents)
+        requirements = await context.requirement_service.extract_requirements(tender.id, processed_documents)
+
+        if requirements:
+            context.requirements_repo.create_requirements(requirements)
+
 
 async def run_step_for_job(job: dict) -> None:
     pipeline_steps = job["pipeline"]
+    tender_id = job["tender_id"]
     idx = job["current_step_index"]
     step_name = pipeline_steps[idx]
 
     try:
-        if step_name == "index_documents":
-            await run_index_documents(job)
-        elif step_name == "extract_base_information":
-            await run_extract_base_information(job)
-        else:
-            raise RuntimeError(f"Unknown step: {step_name}")
+        match step_name:
+            case "index_documents":
+                logger.info(f"Indexing documents for tender {tender_id}")
+                await run_index_documents(job)
+            case "extract_base_information":
+                logger.info(f"Extracting base information for tender {tender_id}")
+                await run_extract_base_information(job)
+            case "extract_requirements":
+                logger.info(f"Extracting requirements for tender {tender_id}")
+                await run_extract_requirements(job)
+            case _:
+                raise RuntimeError(f"Unknown step: {step_name}")
 
         mark_step_success(job["_id"], idx)
     except Exception as exc:

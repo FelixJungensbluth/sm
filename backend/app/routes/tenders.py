@@ -1,9 +1,9 @@
-from concurrent.futures import ThreadPoolExecutor
+from app.repos.shared import get_jobs_repo
+from app.repos.jobs_repo import JobsRepo
 from typing import Annotated, List, Optional
 import uuid
 from fastapi import (
     APIRouter,
-    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -23,19 +23,12 @@ from app.models.document import Document
 
 from app.queue.tender_queue import enqueue_tender_job
 from app.database.mongo import get_mongo_client
-from app.models.tender import TenderProcessingStatus
 
 router = APIRouter(
     prefix="/tenders",
     tags=["tenders"],
     responses={404: {"description": "Not found"}},
 )
-thread_pool = ThreadPoolExecutor(max_workers=4)
-
-# Get MongoDB client for job queries
-mongo_client = get_mongo_client()
-tender_jobs_collection = mongo_client["skillMatch"]["tender_jobs"]
-
 
 @router.post("/", status_code=201, operation_id="create_tender")
 async def create_tenders(
@@ -84,19 +77,13 @@ async def create_tenders(
 @router.get("/", status_code=200, operation_id="get_tenders")
 async def get_tenders(
     tender_repo: TenderRepo = Depends(get_tender_repo),
+    jobs_repo: JobsRepo = Depends(get_jobs_repo),
 ) -> List[Tender]:
     all_tenders = tender_repo.get_tenders()
     
-    # Get all tender IDs that have completed jobs (status = "done")
-    completed_jobs = tender_jobs_collection.find({
-        "type": "tender_processing",
-        "status": TenderProcessingStatus.done.value,
-    })
-    
-    # Create a set of tender IDs with completed jobs
+    completed_jobs = jobs_repo.get_completed_jobs()
     completed_tender_ids = {job["tender_id"] for job in completed_jobs}
     
-    # Filter tenders to only include those with completed jobs
     completed_tenders = [
         tender for tender in all_tenders
         if str(tender.id) in completed_tender_ids
@@ -130,7 +117,9 @@ async def update_tender(
     return tender_repo.update_tender(tender_id, tender_update)
 
 
-@router.get("/{tender_id}/documents", status_code=200, operation_id="get_tender_documents")
+@router.get(
+    "/{tender_id}/documents", status_code=200, operation_id="get_tender_documents"
+)
 async def get_tender_documents(
     tender_id: uuid.UUID,
     document_repo: DocumentRepo = Depends(get_document_repo),

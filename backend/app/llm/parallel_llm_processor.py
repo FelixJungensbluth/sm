@@ -39,7 +39,6 @@ class APIRequest:
             results: list,
             status_tracker: StatusTracker,
     ):
-        logger.info(f"Request #{self.task_id} started | Attempts left: {self.attempts_left}")
         error = None
         response_json = None
 

@@ -27,7 +27,7 @@ class BaseLLM(ABC):
 
     @abstractmethod
     async def process_requests(
-        self, requests: List[dict], max_attempts: int = 2
+        self, llm_requests: List[LlmRequest], max_attempts: int = 2
     ) -> List[dict]:
         """
         Process a list of requests asynchronously.
@@ -57,12 +57,13 @@ class BaseLLM(ABC):
         pass
 
     @abstractmethod
-    def get_output(self, response: dict) -> str:
+    def get_output(self, response: dict, only_json: bool = False) -> str:
         """
         Get the output from the response.
 
         Args:
             response: The response from the LLM provider.
+            only_json: If True, extract JSON from ```json``` code blocks.
 
         Returns:
             The output from the response.
