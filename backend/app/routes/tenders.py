@@ -128,3 +128,11 @@ async def update_tender(
     tender_repo: TenderRepo = Depends(get_tender_repo),
 ):
     return tender_repo.update_tender(tender_id, tender_update)
+
+
+@router.get("/{tender_id}/documents", status_code=200, operation_id="get_tender_documents")
+async def get_tender_documents(
+    tender_id: uuid.UUID,
+    document_repo: DocumentRepo = Depends(get_document_repo),
+) -> List[Document]:
+    return document_repo.get_documents_by_tender_id(tender_id)

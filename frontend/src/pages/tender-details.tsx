@@ -11,9 +11,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ArrowLeft, Save, Edit2, Check, X as XIcon } from 'lucide-react';
+import { ArrowLeft, Save, Edit2, Check, X as XIcon, Eye } from 'lucide-react';
 import { statusLabels, statusBoardColors } from '@/utils/status-labels';
-import { useTenderById, useUpdateTender } from '@/hooks/tenders/use-tenders';
+import { useTenderById, useUpdateTender } from '@/hooks/use-tenders';
 import type { TenderStatus, BaseInformation } from '@/services/api/api';
 import { cn } from '@/lib/utils';
 import { TENDER_STATUSES } from '@/lib/types';
@@ -21,9 +21,10 @@ import { TENDER_STATUSES } from '@/lib/types';
 
 
 export function TenderDetail() {
-  const { taskId, tenderId } = useParams<{
+  const { taskId, tenderId, projectId } = useParams<{
     taskId?: string;
     tenderId?: string;
+    projectId?: string;
   }>();
   const navigate = useNavigate();
   const id = taskId || tenderId;
@@ -78,6 +79,15 @@ export function TenderDetail() {
 
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleOpenView = () => {
+    if (!tender) return;
+    if (projectId) {
+      navigate(`/projects/${projectId}/tenders/${tender.id}/view`);
+    } else {
+      navigate(`/tenders/${tender.id}/view`);
+    }
   };
 
   const handleSave = async () => {
@@ -198,26 +208,32 @@ export function TenderDetail() {
           <ArrowLeft className="h-3 w-3 mr-1.5" />
           Back
         </Button>
-        {hasChanges && (
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={handleCancel} disabled={isSaving} className="h-8 text-sm">
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving} className="h-8 text-sm">
-              {isSaving ? (
-                <>
-                  <Save className="h-3 w-3 mr-1.5 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-3 w-3 mr-1.5" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={handleOpenView} className="h-8 text-sm">
+            <Eye className="h-3 w-3 mr-1.5" />
+            View
+          </Button>
+          {hasChanges && (
+            <>
+              <Button variant="ghost" onClick={handleCancel} disabled={isSaving} className="h-8 text-sm">
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={isSaving} className="h-8 text-sm">
+                {isSaving ? (
+                  <>
+                    <Save className="h-3 w-3 mr-1.5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-3 w-3 mr-1.5" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="space-y-4">

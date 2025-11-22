@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, ExternalLink, Save, Edit2, Check, X as XIcon } from "lucide-react";
+import { X, ExternalLink, Save, Edit2, Check, X as XIcon, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate, useParams } from "react-router-dom";
-import { useUpdateTender } from "@/hooks/tenders/use-tenders";
+import { useUpdateTender } from "@/hooks/use-tenders";
 import { statusLabels, statusBoardColors } from "@/utils/status-labels";
 import type { Tender, TenderStatus, BaseInformation } from "@/services/api/api";
 import { cn } from "@/lib/utils";
@@ -68,6 +68,14 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
       navigate(`/projects/${projectId}/tenders/${tender.id}`);
     } else {
       navigate(`/tenders/${tender.id}`);
+    }
+  };
+
+  const handleOpenView = () => {
+    if (projectId) {
+      navigate(`/projects/${projectId}/tenders/${tender.id}/view`);
+    } else {
+      navigate(`/tenders/${tender.id}/view`);
     }
   };
 
@@ -193,6 +201,16 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
               <Save className={cn("h-4 w-4", isSaving && "animate-spin")} />
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleOpenView}
+            className="h-8 w-8 flex-shrink-0"
+            aria-label="Open tender view"
+            title="Open view"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

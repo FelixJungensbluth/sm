@@ -69,6 +69,22 @@ export interface BodyCreateTender {
   name: string;
 }
 
+/** Document */
+export interface Document {
+  /**
+   * Id
+   * @format uuid
+   */
+  id: string;
+  /** Name */
+  name: string;
+  /**
+   * Tender Id
+   * @format uuid
+   */
+  tender_id: string;
+}
+
 /** HTTPValidationError */
 export interface HTTPValidationError {
   /** Detail */
@@ -539,10 +555,26 @@ export class Api<
         format: "json",
         ...params,
       }),
+
+    /**
+     * No description
+     *
+     * @tags tenders
+     * @name GetTenderDocuments
+     * @summary Get Tender Documents
+     * @request GET:/tenders/{tender_id}/documents
+     */
+    getTenderDocuments: (tenderId: string, params: RequestParams = {}) =>
+      this.request<Document[], void | HTTPValidationError>({
+        path: `/tenders/${tenderId}/documents`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
   };
   jobs = {
     /**
-     * No description
+     * @description Get all tender jobs that are not done.
      *
      * @tags jobs
      * @name GetJobsNotDone
@@ -558,7 +590,7 @@ export class Api<
       }),
 
     /**
-     * No description
+     * @description Restart a job from a specific step (default: step 0, beginning).
      *
      * @tags jobs
      * @name RestartJob
@@ -587,7 +619,7 @@ export class Api<
       }),
 
     /**
-     * No description
+     * @description Cancel a job.
      *
      * @tags jobs
      * @name CancelJob

@@ -1,18 +1,18 @@
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import { PanelGroup, Panel } from "react-resizable-panels";
 import TenderKanbanBoard from "@/components/tenders/TenderKanbanBoard";
 import TenderTableView from "@/components/tenders/TenderTableView";
 import { TenderSidecard } from "@/components/tenders/TenderSidecard";
 import type { DragEndEvent } from "@/components/ui/shadcn-io/kanban";
 import { CreateTenderDialog } from "@/components/tenders/CreateTenderDialog";
 import { CommandMenu } from "@/components/command-menu";
-import { cn } from "@/lib/utils";
 import { useSearch } from "@/contexts/search-context";
-import { useTenders, useUpdateTender, useCreateTender, useDeleteTender } from "@/hooks/tenders/use-tenders";
+import { useTenders, useUpdateTender, useCreateTender, useDeleteTender } from "@/hooks/use-tenders";
 import type { Tender } from "@/services/api/api";
 import type { FileWithPath } from "@/hooks/use-file-drop";
 import { TENDER_STATUSES } from "@/lib/types";
+import ResizeHandler from "@/components/panels/resize-handler";
 
 
 export function Tenders() {
@@ -204,25 +204,7 @@ export function Tenders() {
             {renderMainView()}
           </Panel>
 
-          <PanelResizeHandle
-            id="handle-main-sidecard"
-            className={cn(
-              'relative z-30 bg-border cursor-col-resize group touch-none',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
-              'focus-visible:ring-offset-1 focus-visible:ring-offset-background',
-              'transition-all w-1'
-            )}
-            aria-label="Resize panels"
-            role="separator"
-            aria-orientation="vertical"
-          >
-            <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
-            <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-            </div>
-          </PanelResizeHandle>
+          <ResizeHandler id="handle-main-sidecard" />
 
           {/* Tender Sidecard */}
           <Panel
