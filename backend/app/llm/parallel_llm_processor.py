@@ -252,7 +252,6 @@ class RequestProcessor:
             token_encoding_name=self._token_encoding_name,
             max_attempts=max_attempts,
         )
-        logger.info(f"Results: {results}")
         successful_responses = [r for r in results if "response" in r]
 
         return successful_responses

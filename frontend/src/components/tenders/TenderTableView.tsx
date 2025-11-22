@@ -8,7 +8,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import type { TenderStatus, Tender } from '@/lib/types';
-import { CheckCircle, Loader2, XCircle } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { statusLabels, statusBoardColors } from '@/utils/status-labels';
 import { cn } from '@/lib/utils';
 
@@ -18,7 +18,6 @@ interface TenderTableViewProps {
   onViewTenderDetails: (tender: Tender) => void;
   selectedTender?: Tender;
   onCreateTender?: () => void;
-  projectId: string;
 }
 
 function TenderTableView({
@@ -26,7 +25,6 @@ function TenderTableView({
   onViewTenderDetails,
   selectedTender,
   onCreateTender,
-  projectId,
 }: TenderTableViewProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -55,12 +53,26 @@ function TenderTableView({
         header: 'Title',
         cell: ({ row }) => {
           const tender = row.original;
+          const baseInfo = tender.base_information || [];
+          
+          // Extract description from base_information like TenderCard does
+          const findField = (fieldName: string): string | null => {
+            const field = baseInfo.find(
+              (inf) => inf.field_name === fieldName && inf.value
+            );
+            return field?.value || null;
+          };
+          
+          const description = findField('compact_description') || 
+                             findField('description') || 
+                             tender.description;
+          
           return (
             <div className="flex flex-col gap-1">
               <h4 className="font-light text-sm">{tender.title}</h4>
-              {tender.description && (
+              {description && (
                 <p className="text-xs text-secondary-foreground line-clamp-2">
-                  {tender.description}
+                  {description}
                 </p>
               )}
             </div>
@@ -68,34 +80,57 @@ function TenderTableView({
         },
       },
       {
-        accessorKey: 'executor',
-        header: 'Executor',
+        id: 'questions_deadline',
+        header: 'Questions Deadline',
         cell: ({ row }) => {
-          const executor = row.original.executor;
+          const tender = row.original;
+          const baseInfo = tender.base_information || [];
+          const findField = (fieldName: string): string | null => {
+            const field = baseInfo.find(
+              (inf) => inf.field_name === fieldName && inf.value
+            );
+            return field?.value || null;
+          };
+          const questionsDeadline = findField('questions_deadline');
+          
+          if (!questionsDeadline) {
+            return <span className="text-sm text-secondary-foreground">-</span>;
+          }
+          
           return (
-            <span className="text-sm text-secondary-foreground">
-              {executor || '-'}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3 w-3 text-secondary-foreground flex-shrink-0" />
+              <span className="text-sm text-secondary-foreground">
+                {questionsDeadline}
+              </span>
+            </div>
           );
         },
       },
       {
-        id: 'indicators',
-        header: '',
+        id: 'submission_deadline',
+        header: 'Submission Deadline',
         cell: ({ row }) => {
           const tender = row.original;
+          const baseInfo = tender.base_information || [];
+          const findField = (fieldName: string): string | null => {
+            const field = baseInfo.find(
+              (inf) => inf.field_name === fieldName && inf.value
+            );
+            return field?.value || null;
+          };
+          const submissionDeadline = findField('submission_deadline');
+          
+          if (!submissionDeadline) {
+            return <span className="text-sm text-secondary-foreground">-</span>;
+          }
+          
           return (
-            <div className="flex items-center gap-1">
-              {tender.has_in_progress_attempt && (
-                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-              )}
-              {tender.has_merged_attempt && (
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              )}
-              {tender.last_attempt_failed &&
-                !tender.has_merged_attempt && (
-                  <XCircle className="h-4 w-4 text-destructive" />
-                )}
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3 w-3 text-secondary-foreground flex-shrink-0" />
+              <span className="text-sm text-secondary-foreground">
+                {submissionDeadline}
+              </span>
             </div>
           );
         },

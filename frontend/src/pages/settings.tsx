@@ -1,12 +1,7 @@
-import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Settings as SettingsIcon } from 'lucide-react';
-import { useProject } from '@/contexts/project-context';
 
 export function Settings() {
-  const [searchParams] = useSearchParams();
-  const projectId = searchParams.get('projectId');
-  const { project } = useProject();
 
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
@@ -15,26 +10,6 @@ export function Settings() {
           <SettingsIcon className="h-6 w-6" />
           <h1 className="text-2xl font-semibold">Settings</h1>
         </div>
-
-        {projectId && project && (
-          <Card className="p-6">
-            <h2 className="text-lg font-medium mb-4">Project Settings</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Project Name
-                </label>
-                <p className="text-sm mt-1">{project.name}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Project ID
-                </label>
-                <p className="text-sm mt-1 font-mono">{projectId}</p>
-              </div>
-            </div>
-          </Card>
-        )}
 
         <Card className="p-6">
           <h2 className="text-lg font-medium mb-4">General Settings</h2>

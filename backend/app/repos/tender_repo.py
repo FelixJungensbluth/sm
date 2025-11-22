@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import uuid
 
 from app.config.logger import logger
-from app.models.tender import Tender, TenderUpdate, TenderStatus
+from app.models.tender import Tender, TenderUpdate, TenderReviewStatus
 from app.models.base_information import BaseInformation
 
 
@@ -130,16 +130,16 @@ class TenderRepo:
             status_value = doc.get("status")
             if isinstance(status_value, str):
                 try:
-                    status = TenderStatus(status_value)
+                    status = TenderReviewStatus(status_value)
                 except ValueError:
                     # If status doesn't match any enum value, default to in_review
                     logger.warning(f"Invalid status value '{status_value}', defaulting to in_review")
-                    status = TenderStatus.in_review
-            elif isinstance(status_value, TenderStatus):
+                    status = TenderReviewStatus.in_review
+            elif isinstance(status_value, TenderReviewStatus):
                 status = status_value
             else:
                 # Default to in_review if status is missing or invalid
-                status = TenderStatus.in_review
+                status = TenderReviewStatus.in_review
 
             return Tender(
                 id=tender_id,

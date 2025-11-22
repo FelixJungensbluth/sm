@@ -148,7 +148,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
   return (
     <div className="h-full flex flex-col bg-background border-l">
       {/* Header */}
-      <div className="flex-shrink-0 border-b px-4 py-3 flex items-center justify-between gap-2">
+      <div className="flex-shrink-0 border-b px-3 py-2 flex items-center justify-between gap-2">
         <div className="flex-1 min-w-0 flex items-center gap-2">
           {isEditingTitle ? (
             <div className="flex-1 flex items-center gap-2">
@@ -218,9 +218,9 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
 
       {/* Scrollable content */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="p-4 space-y-6">
+        <div className="p-3 space-y-4">
           {/* Status */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Status
             </Label>
@@ -228,7 +228,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start gap-2 h-9"
+                  className="w-full justify-start gap-2 h-8 text-sm"
                 >
                   <div
                     className="h-2.5 w-2.5 rounded-full flex-shrink-0"
@@ -261,7 +261,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
           </div>
 
           {/* Description */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Description
@@ -284,14 +284,14 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Enter description..."
-                  className="min-h-[120px] resize-none text-sm"
+                  className="min-h-[80px] resize-none text-sm"
                   autoFocus
                 />
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"
                     onClick={() => setIsEditingDescription(false)}
-                    className="h-7"
+                    className="h-7 text-xs"
                   >
                     Done
                   </Button>
@@ -302,7 +302,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                       setDescription(tender.description);
                       setIsEditingDescription(false);
                     }}
-                    className="h-7"
+                    className="h-7 text-xs"
                   >
                     Cancel
                   </Button>
@@ -310,7 +310,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
               </div>
             ) : (
               <div
-                className="text-sm text-foreground whitespace-pre-wrap break-words p-3 rounded-md border border-transparent hover:border-border cursor-text min-h-[60px]"
+                className="text-sm text-foreground whitespace-pre-wrap break-words p-2 rounded-md border border-transparent hover:border-border cursor-text min-h-[40px]"
                 onClick={() => setIsEditingDescription(true)}
               >
                 {description || (
@@ -323,7 +323,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
           </div>
 
           {/* Base Information */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Base Information
@@ -338,24 +338,24 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
               </Button>
             </div>
             {baseInformation.length === 0 ? (
-              <div className="text-sm text-muted-foreground italic p-3 rounded-md border border-dashed">
+              <div className="text-xs text-muted-foreground italic p-2 rounded-md border border-dashed">
                 No base information. Click "Add" to add a field.
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {baseInformation.map((info, index) => (
                   <div
                     key={index}
                     className={cn(
-                      "p-3 rounded-md border",
+                      "p-2 rounded-md border",
                       editingBaseInfoIndex === index
                         ? "border-primary bg-muted/30"
                         : "border-border hover:border-primary/50"
                     )}
                   >
                     {editingBaseInfoIndex === index ? (
-                      <div className="space-y-3">
-                        <div className="space-y-1.5">
+                      <div className="space-y-2">
+                        <div className="space-y-1">
                           <Label className="text-xs">Field Name</Label>
                           <Input
                             value={info.field_name || ""}
@@ -367,10 +367,10 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                               )
                             }
                             placeholder="e.g., submission_deadline"
-                            className="h-8 text-sm"
+                            className="h-7 text-sm"
                           />
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           <Label className="text-xs">Value</Label>
                           <Input
                             value={info.value || ""}
@@ -382,10 +382,10 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                               )
                             }
                             placeholder="Enter value..."
-                            className="h-8 text-sm"
+                            className="h-7 text-sm"
                           />
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           <Label className="text-xs">Note</Label>
                           <Textarea
                             value={info.note || ""}
@@ -397,7 +397,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                               )
                             }
                             placeholder="Add a note..."
-                            className="min-h-[60px] resize-none text-sm"
+                            className="min-h-[50px] resize-none text-sm"
                           />
                         </div>
                         <div className="flex items-center gap-2">
@@ -433,30 +433,30 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                           </label>
                         </div>
                         {info.exact_text && (
-                          <div className="space-y-1.5">
+                          <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">
                               Exact Text (read-only)
                             </Label>
-                            <div className="text-xs text-muted-foreground p-2 bg-muted rounded border">
+                            <div className="text-xs text-muted-foreground p-1.5 bg-muted rounded border">
                               {info.exact_text}
                             </div>
                           </div>
                         )}
                         {info.source_file && (
-                          <div className="space-y-1.5">
+                          <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">
                               Source File (read-only)
                             </Label>
-                            <div className="text-xs text-muted-foreground p-2 bg-muted rounded border">
+                            <div className="text-xs text-muted-foreground p-1.5 bg-muted rounded border">
                               {info.source_file}
                             </div>
                           </div>
                         )}
-                        <div className="flex items-center gap-2 pt-2">
+                        <div className="flex items-center gap-2 pt-1">
                           <Button
                             size="sm"
                             onClick={() => setEditingBaseInfoIndex(null)}
-                            className="h-7"
+                            className="h-7 text-xs"
                           >
                             Done
                           </Button>
@@ -464,7 +464,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleRemoveBaseInfo(index)}
-                            className="h-7 text-destructive hover:text-destructive"
+                            className="h-7 text-xs text-destructive hover:text-destructive"
                           >
                             <XIcon className="h-3 w-3 mr-1" />
                             Remove
@@ -473,12 +473,12 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                       </div>
                     ) : (
                       <div
-                        className="space-y-2 cursor-pointer"
+                        className="space-y-1.5 cursor-pointer"
                         onClick={() => setEditingBaseInfoIndex(index)}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-muted-foreground mb-1">
+                            <div className="text-xs font-medium text-muted-foreground mb-0.5">
                               {info.field_name || "Unnamed Field"}
                             </div>
                             {info.value && (
@@ -487,24 +487,24 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                               </div>
                             )}
                             {info.note && (
-                              <div className="text-xs text-muted-foreground mt-1 italic">
+                              <div className="text-xs text-muted-foreground mt-0.5 italic">
                                 Note: {info.note}
                               </div>
                             )}
                             {info.exact_text && (
-                              <div className="text-xs text-muted-foreground mt-1 p-2 bg-muted rounded border">
+                              <div className="text-xs text-muted-foreground mt-0.5 p-1.5 bg-muted rounded border">
                                 "{info.exact_text}"
                               </div>
                             )}
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
                             {info.approved && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400">
+                              <span className="text-xs px-1 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400">
                                 Approved
                               </span>
                             )}
                             {info.fulfillable && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                              <span className="text-xs px-1 py-0.5 rounded bg-blue-500/20 text-blue-700 dark:text-blue-400">
                                 Fulfillable
                               </span>
                             )}
@@ -515,7 +515,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                             Source: {info.source_file}
                           </div>
                         )}
-                        <div className="pt-1">
+                        <div className="pt-0.5">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -537,12 +537,11 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
             )}
           </div>
 
-          {/* Metadata (read-only) */}
-          <div className="space-y-2 pt-4 border-t">
+          <div className="space-y-1.5 pt-3 border-t">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Metadata
             </Label>
-            <div className="space-y-2 text-sm">
+            <div className="space-y-1 text-xs">
               <div>
                 <span className="text-muted-foreground">ID: </span>
                 <span className="font-mono text-xs">{tender.id}</span>
@@ -562,13 +561,13 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
 
       {/* Save/Cancel footer when there are changes */}
       {hasChanges && (
-        <div className="flex-shrink-0 border-t px-4 py-3 flex items-center justify-end gap-2 bg-muted/30">
+        <div className="flex-shrink-0 border-t px-3 py-2 flex items-center justify-end gap-2 bg-muted/30">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleCancel}
             disabled={isSaving}
-            className="h-8"
+            className="h-7 text-xs"
           >
             Cancel
           </Button>
@@ -576,7 +575,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
             size="sm"
             onClick={handleSave}
             disabled={isSaving}
-            className="h-8"
+            className="h-7 text-xs"
           >
             {isSaving ? (
               <>

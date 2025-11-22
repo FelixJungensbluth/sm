@@ -160,13 +160,13 @@ export function TenderDetail() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto max-w-4xl py-8 px-4">
-        <Button variant="ghost" onClick={handleBack} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
+      <div className="container mx-auto max-w-4xl py-4 px-4">
+        <Button variant="ghost" onClick={handleBack} className="mb-4 h-8 text-sm">
+          <ArrowLeft className="h-3 w-3 mr-1.5" />
           Back
         </Button>
-        <Card className="p-6">
-          <p className="text-muted-foreground">Loading...</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">Loading...</p>
         </Card>
       </div>
     );
@@ -174,13 +174,13 @@ export function TenderDetail() {
 
   if (!tender) {
     return (
-      <div className="container mx-auto max-w-4xl py-8 px-4">
-        <Button variant="ghost" onClick={handleBack} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
+      <div className="container mx-auto max-w-4xl py-4 px-4">
+        <Button variant="ghost" onClick={handleBack} className="mb-4 h-8 text-sm">
+          <ArrowLeft className="h-3 w-3 mr-1.5" />
           Back
         </Button>
-        <Card className="p-6">
-          <p className="text-muted-foreground">Tender not found</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">Tender not found</p>
         </Card>
       </div>
     );
@@ -191,27 +191,27 @@ export function TenderDetail() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="container mx-auto max-w-4xl py-8 px-4">
+      <div className="container mx-auto max-w-4xl py-4 px-4">
         {/* Header with Back and Save */}
-        <div className="flex items-center justify-between mb-6">
-        <Button variant="ghost" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
+        <div className="flex items-center justify-between mb-4">
+        <Button variant="ghost" onClick={handleBack} className="h-8 text-sm">
+          <ArrowLeft className="h-3 w-3 mr-1.5" />
           Back
         </Button>
         {hasChanges && (
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
+            <Button variant="ghost" onClick={handleCancel} disabled={isSaving} className="h-8 text-sm">
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
+            <Button onClick={handleSave} disabled={isSaving} className="h-8 text-sm">
               {isSaving ? (
                 <>
-                  <Save className="h-4 w-4 mr-2 animate-spin" />
+                  <Save className="h-3 w-3 mr-1.5 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="h-3 w-3 mr-1.5" />
                   Save Changes
                 </>
               )}
@@ -220,12 +220,12 @@ export function TenderDetail() {
         )}
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header Card */}
-        <Card className="p-6">
-          <div className="space-y-4">
+        <Card className="p-4">
+          <div className="space-y-3">
             {/* Title */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Title
               </Label>
@@ -244,13 +244,13 @@ export function TenderDetail() {
                         setIsEditingTitle(false);
                       }
                     }}
-                    className="text-2xl font-semibold h-12"
+                    className="text-xl font-semibold h-9"
                     autoFocus
                   />
                 </div>
               ) : (
                 <h1
-                  className="text-2xl font-semibold cursor-text hover:bg-muted/50 px-3 py-2 -mx-3 -my-2 rounded transition-colors"
+                  className="text-xl font-semibold cursor-text hover:bg-muted/50 px-2 py-1 -mx-2 -my-1 rounded transition-colors"
                   onClick={() => setIsEditingTitle(true)}
                   title="Click to edit"
                 >
@@ -260,13 +260,13 @@ export function TenderDetail() {
             </div>
 
             {/* Status */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Status
               </Label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto justify-start gap-2 h-10">
+                  <Button variant="outline" className="w-full sm:w-auto justify-start gap-2 h-8 text-sm">
                     <div
                       className="h-3 w-3 rounded-full flex-shrink-0"
                       style={{ backgroundColor: `hsl(var(${statusColor}))` }}
@@ -298,8 +298,8 @@ export function TenderDetail() {
         </Card>
 
         {/* Description */}
-        <Card className="p-6">
-          <div className="space-y-4">
+        <Card className="p-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Description
@@ -309,7 +309,7 @@ export function TenderDetail() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsEditingDescription(true)}
-                  className="h-8 px-2"
+                  className="h-7 px-2 text-xs"
                 >
                   <Edit2 className="h-3 w-3 mr-1" />
                   Edit
@@ -317,19 +317,19 @@ export function TenderDetail() {
               )}
             </div>
             {isEditingDescription ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Enter description..."
-                  className="min-h-[200px] resize-none text-sm"
+                  className="min-h-[120px] resize-none text-sm"
                   autoFocus
                 />
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"
                     onClick={() => setIsEditingDescription(false)}
-                    className="h-8"
+                    className="h-7 text-xs"
                   >
                     Done
                   </Button>
@@ -340,7 +340,7 @@ export function TenderDetail() {
                       setDescription(tender.description);
                       setIsEditingDescription(false);
                     }}
-                    className="h-8"
+                    className="h-7 text-xs"
                   >
                     Cancel
                   </Button>
@@ -348,7 +348,7 @@ export function TenderDetail() {
               </div>
             ) : (
               <div
-                className="text-sm text-foreground whitespace-pre-wrap break-words p-4 rounded-md border border-transparent hover:border-border cursor-text min-h-[100px] transition-colors"
+                className="text-sm text-foreground whitespace-pre-wrap break-words p-3 rounded-md border border-transparent hover:border-border cursor-text min-h-[60px] transition-colors"
                 onClick={() => setIsEditingDescription(true)}
               >
                 {description || (
@@ -362,8 +362,8 @@ export function TenderDetail() {
         </Card>
 
         {/* Base Information */}
-        <Card className="p-6">
-          <div className="space-y-4">
+        <Card className="p-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Base Information
@@ -372,32 +372,32 @@ export function TenderDetail() {
                 variant="ghost"
                 size="sm"
                 onClick={handleAddBaseInfo}
-                className="h-8 px-2"
+                className="h-7 px-2 text-xs"
               >
                 + Add Field
               </Button>
             </div>
             {baseInformation.length === 0 ? (
-              <div className="text-sm text-muted-foreground italic p-4 rounded-md border border-dashed text-center">
+              <div className="text-sm text-muted-foreground italic p-3 rounded-md border border-dashed text-center">
                 No base information. Click "Add Field" to add a field.
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {baseInformation.map((info, index) => (
                   <div
                     key={index}
                     className={cn(
-                      'p-4 rounded-md border',
+                      'p-3 rounded-md border',
                       editingBaseInfoIndex === index
                         ? 'border-primary bg-muted/30'
                         : 'border-border hover:border-primary/50'
                     )}
                   >
                     {editingBaseInfoIndex === index ? (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-sm">Field Name</Label>
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Field Name</Label>
                             <Input
                               value={info.field_name || ''}
                               onChange={(e) =>
@@ -408,11 +408,11 @@ export function TenderDetail() {
                                 )
                               }
                               placeholder="e.g., submission_deadline"
-                              className="h-9"
+                              className="h-8 text-sm"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-sm">Value</Label>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Value</Label>
                             <Input
                               value={info.value || ''}
                               onChange={(e) =>
@@ -423,12 +423,12 @@ export function TenderDetail() {
                                 )
                               }
                               placeholder="Enter value..."
-                              className="h-9"
+                              className="h-8 text-sm"
                             />
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm">Note</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Note</Label>
                           <Textarea
                             value={info.note || ''}
                             onChange={(e) =>
@@ -439,11 +439,11 @@ export function TenderDetail() {
                               )
                             }
                             placeholder="Add a note..."
-                            className="min-h-[80px] resize-none"
+                            className="min-h-[60px] resize-none text-sm"
                           />
                         </div>
-                        <div className="flex items-center gap-4">
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-2 text-xs cursor-pointer">
                             <input
                               type="checkbox"
                               checked={info.approved === true}
@@ -454,11 +454,11 @@ export function TenderDetail() {
                                   e.target.checked ? true : null
                                 )
                               }
-                              className="h-4 w-4"
+                              className="h-3.5 w-3.5"
                             />
                             Approved
                           </label>
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <label className="flex items-center gap-2 text-xs cursor-pointer">
                             <input
                               type="checkbox"
                               checked={info.fulfillable === true}
@@ -469,27 +469,27 @@ export function TenderDetail() {
                                   e.target.checked ? true : null
                                 )
                               }
-                              className="h-4 w-4"
+                              className="h-3.5 w-3.5"
                             />
                             Fulfillable
                           </label>
                         </div>
                         {info.exact_text && (
-                          <div className="space-y-2">
-                            <Label className="text-sm text-muted-foreground">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">
                               Exact Text (read-only)
                             </Label>
-                            <div className="text-sm text-muted-foreground p-3 bg-muted rounded border">
+                            <div className="text-xs text-muted-foreground p-2 bg-muted rounded border">
                               {info.exact_text}
                             </div>
                           </div>
                         )}
                         {info.source_file && (
-                          <div className="space-y-2">
-                            <Label className="text-sm text-muted-foreground">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">
                               Source File (read-only)
                             </Label>
-                            <div className="text-sm text-muted-foreground p-3 bg-muted rounded border">
+                            <div className="text-xs text-muted-foreground p-2 bg-muted rounded border">
                               {info.source_file}
                             </div>
                           </div>
@@ -498,7 +498,7 @@ export function TenderDetail() {
                           <Button
                             size="sm"
                             onClick={() => setEditingBaseInfoIndex(null)}
-                            className="h-8"
+                            className="h-7 text-xs"
                           >
                             Done
                           </Button>
@@ -506,7 +506,7 @@ export function TenderDetail() {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleRemoveBaseInfo(index)}
-                            className="h-8 text-destructive hover:text-destructive"
+                            className="h-7 text-xs text-destructive hover:text-destructive"
                           >
                             <XIcon className="h-3 w-3 mr-1" />
                             Remove
@@ -515,49 +515,49 @@ export function TenderDetail() {
                       </div>
                     ) : (
                       <div
-                        className="space-y-3 cursor-pointer"
+                        className="space-y-2 cursor-pointer"
                         onClick={() => setEditingBaseInfoIndex(index)}
                       >
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-foreground mb-2">
+                            <div className="text-sm font-semibold text-foreground mb-1">
                               {info.field_name || 'Unnamed Field'}
                             </div>
                             {info.value && (
-                              <div className="text-base text-foreground break-words mb-2">
+                              <div className="text-sm text-foreground break-words mb-1">
                                 {info.value}
                               </div>
                             )}
                             {info.note && (
-                              <div className="text-sm text-muted-foreground mt-2 italic">
+                              <div className="text-xs text-muted-foreground mt-1 italic">
                                 Note: {info.note}
                               </div>
                             )}
                             {info.exact_text && (
-                              <div className="text-sm text-muted-foreground mt-2 p-3 bg-muted rounded border">
+                              <div className="text-xs text-muted-foreground mt-1 p-2 bg-muted rounded border">
                                 "{info.exact_text}"
                               </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
                             {info.approved && (
-                              <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-700 dark:text-green-400 font-medium">
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400 font-medium">
                                 Approved
                               </span>
                             )}
                             {info.fulfillable && (
-                              <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-700 dark:text-blue-400 font-medium">
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-700 dark:text-blue-400 font-medium">
                                 Fulfillable
                               </span>
                             )}
                           </div>
                         </div>
                         {info.source_file && (
-                          <div className="text-xs text-muted-foreground pt-2 border-t">
+                          <div className="text-xs text-muted-foreground pt-1 border-t">
                             Source: {info.source_file}
                           </div>
                         )}
-                        <div className="pt-2">
+                        <div className="pt-1">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -565,7 +565,7 @@ export function TenderDetail() {
                               e.stopPropagation();
                               setEditingBaseInfoIndex(index);
                             }}
-                            className="h-8 px-2"
+                            className="h-7 px-2 text-xs"
                           >
                             <Edit2 className="h-3 w-3 mr-1" />
                             Edit
@@ -581,12 +581,12 @@ export function TenderDetail() {
         </Card>
 
         {/* Metadata (read-only) */}
-        <Card className="p-6">
-          <div className="space-y-4">
+        <Card className="p-4">
+          <div className="space-y-3">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Metadata
             </Label>
-            <div className="space-y-3 text-sm">
+            <div className="space-y-2 text-sm">
               <div>
                 <span className="text-muted-foreground font-medium">Tender ID: </span>
                 <span className="font-mono text-xs">{tender.id}</span>

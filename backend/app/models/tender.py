@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app.models.base_information import BaseInformation
 
 
-class TenderStatus(str, Enum):
+class TenderReviewStatus(str, Enum):
     in_review = "In Prüfung"
     uninteresting = "Uninteressant"
     in_preparation = "In Ausarbeitung"
@@ -15,12 +15,20 @@ class TenderStatus(str, Enum):
     rejected = "Abgelehnt"
 
 
+class TenderProcessingStatus(str, Enum):
+    queued = "queued"
+    processing = "processing"
+    done = "done"
+    error = "error"
+    cancelled = "cancelled"
+
+
 class Tender(BaseModel):
     id: uuid.UUID
     title: str
     description: str
     base_information: list[BaseInformation]
-    status: TenderStatus
+    status: TenderReviewStatus
     created_at: datetime
     updated_at: datetime
 
@@ -31,7 +39,7 @@ class Tender(BaseModel):
             title=name,
             description="",
             base_information=[],
-            status=TenderStatus.in_review,
+            status=TenderReviewStatus.in_review,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
@@ -41,4 +49,4 @@ class TenderUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     base_information: Optional[list[BaseInformation]] = None
-    status: Optional[TenderStatus] = None
+    status: Optional[TenderReviewStatus] = None

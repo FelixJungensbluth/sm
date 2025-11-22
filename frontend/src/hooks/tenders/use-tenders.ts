@@ -76,11 +76,37 @@ export function useUpdateTender() {
 }
 
 export function useCreateTender() {
-  const api = useApi();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: BodyCreateTender) => api.tenders.createTender(data),
+    mutationFn: async (data: BodyCreateTender) => {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL;
+      const formData = new FormData();
+      
+      formData.append('name', data.name);
+      
+      // Only append valid File objects
+      if (data.files && Array.isArray(data.files)) {
+        data.files
+          .filter((file): file is File => file instanceof File)
+          .forEach((file) => {
+            formData.append('files', file);
+          });
+      }
+
+      const response = await fetch(`${baseUrl}/tenders/`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Failed to create tender' }));
+        throw error;
+      }
+
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenders'] });
     },

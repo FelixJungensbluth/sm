@@ -18,14 +18,27 @@ class DocumentRepo:
                 documents.append(document)
         return documents
 
-    def get_documents_by_tender_id(self, tender_id: uuid.UUID) -> List[Document]:
-        documents = []
-        for doc in self.collection.find({"tender_id": str(tender_id)}):
-            document = self._doc_to_document(doc)
-            if document:
-                documents.append(document)
-        return documents
+    def get_documents_by_ids(self, document_ids: List[str]) -> List[Document]:
+        try:
+            documents = []
+            for doc in self.collection.find({"id": {"$in": document_ids}}):
+                document = self._doc_to_document(doc)
+                if document:
+                    documents.append(document)
+            return documents
+        except Exception:
+            return []
 
+    def get_documents_by_tender_id(self, tender_id: uuid.UUID) -> List[Document]:
+        try:
+            documents = []
+            for doc in self.collection.find({"tender_id": str(tender_id)}):
+                document = self._doc_to_document(doc)
+                if document:
+                    documents.append(document)
+            return documents
+        except Exception:
+            return []
 
     def create_documents(self, documents: list[Document]) -> list[Document]:
         if not documents:

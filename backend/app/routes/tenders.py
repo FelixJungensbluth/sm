@@ -1,4 +1,3 @@
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import Annotated, List, Optional
 import uuid
@@ -14,18 +13,17 @@ from fastapi import (
 )
 
 from app.models.tender import Tender, TenderUpdate
-from app.processing_pipeline import TenderProcessingPipeline
 from app.repos.shared import get_document_repo, get_tender_repo
 from app.repos.tender_repo import TenderRepo
 from app.config.logger import logger
 from app.services.external.minio_service import MinioService
-from app.services.shared import get_minio_service, get_rag_service
+from app.services.shared import get_minio_service
 from app.repos.document_repo import DocumentRepo
 from app.models.document import Document
-from app.config.app_config import get_llm_provider
-from app.llm.provider.base_llm import BaseLLM
-from app.services.rag.rag_service import RagService
-from app.config.settings import SettingsDep
+
+from app.queue.tender_queue import enqueue_tender_job
+from app.database.mongo import get_mongo_client
+from app.models.tender import TenderProcessingStatus
 
 router = APIRouter(
     prefix="/tenders",
@@ -34,13 +32,15 @@ router = APIRouter(
 )
 thread_pool = ThreadPoolExecutor(max_workers=4)
 
+# Get MongoDB client for job queries
+mongo_client = get_mongo_client()
+tender_jobs_collection = mongo_client["skillMatch"]["tender_jobs"]
+
 
 @router.post("/", status_code=201, operation_id="create_tender")
 async def create_tenders(
     files: Annotated[list[UploadFile], File()],
     name: Annotated[str, Form()],
-    background_tasks: BackgroundTasks,
-    settings: SettingsDep,
     minio_service: MinioService = Depends(get_minio_service),
     tender_repo: TenderRepo = Depends(get_tender_repo),
     document_repo: DocumentRepo = Depends(get_document_repo),
@@ -69,22 +69,40 @@ async def create_tenders(
             detail="Failed to upload files",
         )
 
-    pipeline = TenderProcessingPipeline(
-        settings=settings, minio_service=minio_service, tender_repo=tender_repo
+    job_id = enqueue_tender_job(
+        tender_id=str(tender.id),
+        document_ids=[str(d.id) for d in documents],
     )
-    loop = asyncio.get_event_loop()
-    background_tasks.add_task(
-        loop.run_in_executor,
-        thread_pool,
-        lambda: asyncio.run(pipeline.run(tender, documents)),
-    )
+
+    return {
+        "tender_id": str(tender.id),
+        "job_id": str(job_id),
+        "status": "queued",
+    }
 
 
 @router.get("/", status_code=200, operation_id="get_tenders")
 async def get_tenders(
     tender_repo: TenderRepo = Depends(get_tender_repo),
 ) -> List[Tender]:
-    return tender_repo.get_tenders()
+    all_tenders = tender_repo.get_tenders()
+    
+    # Get all tender IDs that have completed jobs (status = "done")
+    completed_jobs = tender_jobs_collection.find({
+        "type": "tender_processing",
+        "status": TenderProcessingStatus.done.value,
+    })
+    
+    # Create a set of tender IDs with completed jobs
+    completed_tender_ids = {job["tender_id"] for job in completed_jobs}
+    
+    # Filter tenders to only include those with completed jobs
+    completed_tenders = [
+        tender for tender in all_tenders
+        if str(tender.id) in completed_tender_ids
+    ]
+    
+    return completed_tenders
 
 
 @router.get("/{tender_id}", status_code=200, operation_id="get_tender_by_id")

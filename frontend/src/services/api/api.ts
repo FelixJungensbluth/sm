@@ -10,13 +10,21 @@
  * ---------------------------------------------------------------
  */
 
-/** TenderStatus */
-export type TenderStatus =
+/** TenderReviewStatus */
+export type TenderReviewStatus =
   | "In Prüfung"
   | "Uninteressant"
   | "In Ausarbeitung"
   | "Abgeschickt"
   | "Abgelehnt";
+
+/** TenderProcessingStatus */
+export type TenderProcessingStatus =
+  | "queued"
+  | "processing"
+  | "done"
+  | "error"
+  | "cancelled";
 
 /** BaseInformation */
 export interface BaseInformation {
@@ -67,6 +75,26 @@ export interface HTTPValidationError {
   detail?: ValidationError[];
 }
 
+/** JobResponse */
+export interface JobResponse {
+  /** Job Id */
+  job_id: string;
+  /** Message */
+  message: string;
+  /** Status */
+  status: string;
+}
+
+/** StepStatus */
+export interface StepStatus {
+  /** Name */
+  name: string;
+  /** Status */
+  status: string;
+  /** Last Error */
+  last_error?: string | null;
+}
+
 /** Tender */
 export interface Tender {
   /**
@@ -80,7 +108,54 @@ export interface Tender {
   description: string;
   /** Base Information */
   base_information: BaseInformation[];
-  status: TenderStatus;
+  status: TenderReviewStatus;
+  /**
+   * Created At
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Updated At
+   * @format date-time
+   */
+  updated_at: string;
+}
+
+/**
+ * TenderJob
+ * Tender processing job model.
+ */
+export interface TenderJob {
+  /**
+   * Id
+   * Job ID
+   */
+  _id?: string | null;
+  /**
+   * Type
+   * Job type
+   * @default "tender_processing"
+   */
+  type?: string;
+  /** Tender Id */
+  tender_id: string;
+  /** Document Ids */
+  document_ids: string[];
+  /** Pipeline */
+  pipeline: string[];
+  /** Current Step Index */
+  current_step_index: number;
+  status: TenderProcessingStatus;
+  /** Step Status */
+  step_status: StepStatus[];
+  /** Attempts */
+  attempts: number;
+  /** Max Attempts */
+  max_attempts: number;
+  /** Locked By */
+  locked_by?: string | null;
+  /** Locked At */
+  locked_at?: string | null;
   /**
    * Created At
    * @format date-time
@@ -101,7 +176,7 @@ export interface TenderUpdate {
   description?: string | null;
   /** Base Information */
   base_information?: BaseInformation[] | null;
-  status?: TenderStatus | null;
+  status?: TenderReviewStatus | null;
 }
 
 /** ValidationError */
@@ -461,6 +536,68 @@ export class Api<
         method: "PUT",
         body: data,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+  };
+  jobs = {
+    /**
+     * No description
+     *
+     * @tags jobs
+     * @name GetJobsNotDone
+     * @summary Get Jobs Not Done Endpoint
+     * @request GET:/jobs/
+     */
+    getJobsNotDone: (params: RequestParams = {}) =>
+      this.request<TenderJob[], void>({
+        path: `/jobs/`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags jobs
+     * @name RestartJob
+     * @summary Restart Job Endpoint
+     * @request POST:/jobs/{job_id}/restart
+     */
+    restartJob: (
+      jobId: string,
+      query?: {
+        /**
+         * Step Index
+         * Step index to restart from (0 = beginning)
+         * @min 0
+         * @default 0
+         */
+        step_index?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<JobResponse, void | HTTPValidationError>({
+        path: `/jobs/${jobId}/restart`,
+        method: "POST",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags jobs
+     * @name CancelJob
+     * @summary Cancel Job Endpoint
+     * @request POST:/jobs/{job_id}/cancel
+     */
+    cancelJob: (jobId: string, params: RequestParams = {}) =>
+      this.request<JobResponse, void | HTTPValidationError>({
+        path: `/jobs/${jobId}/cancel`,
+        method: "POST",
         format: "json",
         ...params,
       }),

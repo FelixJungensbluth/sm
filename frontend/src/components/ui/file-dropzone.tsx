@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { allowedFileFormats } from '@/constants/file-formats';
 
 interface FileDropzoneProps {
-  onFilesSelected?: (files: FileWithPath[]) => void;
+  onFilesSelected?: (files: (FileWithPath | File)[]) => void;
   selectedFiles?: FileWithPath[];
   onRemoveFile?: (index: number) => void;
   showFileList?: boolean;
@@ -50,7 +50,7 @@ export function FileDropzone({
         if (isFileAllowed(file)) {
           validFiles.push(file);
         } else {
-          rejected.push(file.fullPath || file.name);
+          rejected.push(file.name);
         }
       });
 

@@ -2,41 +2,19 @@ import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   Settings,
-  BookOpen,
-  MessageCircleQuestion,
-  Menu,
   Plus,
   Table,
   LayoutGrid,
   MessageSquare,
 } from 'lucide-react';
-import { Logo } from '@/components/logo';
+
 import { SearchBar } from '@/components/search-bar';
 import { useSearch } from '@/contexts/search-context';
-import { useProject } from '@/contexts/project-context';
+import { JobStatusView } from '@/components/jobs/JobStatusView';
 
-const EXTERNAL_LINKS = [
-  {
-    label: 'Docs',
-    icon: BookOpen,
-    href: 'https://vibekanban.com/docs',
-  },
-  {
-    label: 'Support',
-    icon: MessageCircleQuestion,
-    href: 'https://github.com/BloopAI/vibe-kanban/issues',
-  },
-];
 
 export function Navbar() {
-  const { projectId, project } = useProject();
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -50,9 +28,14 @@ export function Navbar() {
   );
 
   const handleCreateTask = useCallback(() => {
-    // Dispatch custom event to trigger create task dialog
-    window.dispatchEvent(new CustomEvent('open-create-task-dialog'));
-  }, []);
+    const isTendersPage = location.pathname.includes('/tasks') || 
+                          location.pathname.includes('/tenders') || 
+                          location.pathname === '/';
+    const eventName = isTendersPage 
+      ? 'open-create-tender-dialog' 
+      : 'open-create-task-dialog';
+    window.dispatchEvent(new CustomEvent(eventName));
+  }, [location.pathname]);
 
   const currentView = searchParams.get('viewType') || 'kanban';
   const handleToggleView = useCallback(() => {
@@ -66,21 +49,18 @@ export function Navbar() {
     <div className="border-b bg-background">
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
-          <div className="flex-1 flex items-center">
-            <Link to="/">
-              <Logo />
-            </Link>
+          <div className="flex-1"></div>
+          
+          <div className="flex-1 flex justify-center">
+            <SearchBar
+              ref={setSearchBarRef}
+              className="hidden sm:flex"
+              value={query}
+              onChange={setQuery}
+              disabled={!active}
+              onClear={clear}
+            />
           </div>
-
-          <SearchBar
-            ref={setSearchBarRef}
-            className="hidden sm:flex"
-            value={query}
-            onChange={setQuery}
-            disabled={!active}
-            onClear={clear}
-            project={project || null}
-          />
 
           <div className="flex-1 flex justify-end">
             {isTasksPage && (
@@ -97,6 +77,7 @@ export function Navbar() {
                 )}
               </Button>
             )}
+            <JobStatusView />
             <Button
                 variant="ghost"
                 size="icon"
@@ -111,45 +92,10 @@ export function Navbar() {
               </Link>
             </Button>
             <Button variant="ghost" size="icon" asChild aria-label="Settings">
-              <Link
-                to={
-                  projectId
-                    ? `/settings/projects?projectId=${projectId}`
-                    : '/settings'
-                }
-              >
+              <Link to="/settings">
                 <Settings className="h-4 w-4" />
               </Link>
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Main navigation"
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent align="end">
-                {EXTERNAL_LINKS.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <DropdownMenuItem key={item.href} asChild>
-                      <a
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Icon className="mr-2 h-4 w-4" />
-                        {item.label}
-                      </a>
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
       </div>

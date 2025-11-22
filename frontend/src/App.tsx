@@ -6,7 +6,6 @@ import { Chat } from "@/pages/chat";
 import { NormalLayout } from "@/components/layout/NormalLayout";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SearchProvider } from "@/contexts/search-context";
-import { ProjectProvider } from "@/contexts/project-context";
 import { ThemeMode } from "./lib/types";
 import { HotkeysProvider } from "react-hotkeys-hook";
 import { ApiProvider } from "./contexts/api-context";
@@ -44,13 +43,11 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-        <ProjectProvider>
           <HotkeysProvider initiallyActiveScopes={["*", "global", "kanban"]}>
             <ApiProvider>
               <AppContent />
             </ApiProvider>
           </HotkeysProvider>
-        </ProjectProvider>
     </BrowserRouter>
   );
 }

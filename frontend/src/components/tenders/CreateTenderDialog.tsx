@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { FileDropzone } from '@/components/ui/file-dropzone';
 import { type FileWithPath } from '@/hooks/use-file-drop';
@@ -18,7 +17,7 @@ interface CreateTenderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId?: string | null;
-  onCreateTender: (data: { title: string; description: string; files: File[] }) => void;
+  onCreateTender: (data: { title: string; files: File[] }) => void;
   isLoading?: boolean;
 }
 
@@ -29,13 +28,7 @@ export function CreateTenderDialog({
   isLoading = false,
 }: CreateTenderDialogProps) {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<FileWithPath[]>([]);
-
-
-  if (!open) {
-    return null;
-  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,20 +36,17 @@ export function CreateTenderDialog({
 
     onCreateTender({
       title: title.trim(),
-      description: description.trim() || '',
-      files: selectedFiles.map(f => f.file),
+      files: selectedFiles,
     });
 
     // Reset form
     setTitle('');
-    setDescription('');
     setSelectedFiles([]);
     onOpenChange(false);
   };
 
   const handleCancel = () => {
     setTitle('');
-    setDescription('');
     setSelectedFiles([]);
     onOpenChange(false);
   };
@@ -69,8 +59,6 @@ export function CreateTenderDialog({
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  console.log('Rendering Dialog component with open=', open);
-  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -91,16 +79,6 @@ export function CreateTenderDialog({
                 onChange={(e) => setTitle(e.target.value)}
                 autoFocus
                 required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Enter tender description (optional)"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
               />
             </div>
             <div className="grid gap-2">

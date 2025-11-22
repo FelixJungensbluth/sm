@@ -11,22 +11,16 @@ import { cn } from "@/lib/utils";
 import { useSearch } from "@/contexts/search-context";
 import { useTenders, useUpdateTender, useCreateTender, useDeleteTender } from "@/hooks/tenders/use-tenders";
 import type { Tender } from "@/services/api/api";
+import type { FileWithPath } from "@/hooks/use-file-drop";
+import { TENDER_STATUSES } from "@/lib/types";
 
-
-const TENDER_STATUSES = [
-  "In Prüfung",
-  "In Ausarbeitung",
-  "Uninteressant",
-  "Abgeschickt",
-  "Abgelehnt",
-] as const;
 
 export function Tenders() {
   const [searchParams] = useSearchParams();
   const viewType = searchParams.get('viewType') || 'kanban';
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [selectedTender, setSelectedTender] = useState<Tender | null>(null);
+  const [selectedTender, setSelectedTender] = useState<Tender | undefined>(undefined);
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
 
   const { data: tenders = [] } = useTenders();
@@ -124,9 +118,8 @@ export function Tenders() {
     (tenderId: string) => {
       deleteTender.mutate(tenderId, {
         onSuccess: () => {
-          // Clear selection if the deleted tender was selected
           if (selectedTender?.id === tenderId) {
-            setSelectedTender(null);
+            setSelectedTender(undefined);
           }
         },
       });
@@ -135,10 +128,9 @@ export function Tenders() {
   );
 
   const handleCreateTender = useCallback(
-    (data: { title: string; description: string; files: File[] }) => {
+    (data: { title: string; files: FileWithPath[] }) => {
       setIsCreating(true);
       
-      // The API expects BodyCreateTender with files and name
       createTender.mutate(
         {
           name: data.title,
@@ -178,7 +170,6 @@ export function Tenders() {
             tenders={sortedTenders}
             onViewTenderDetails={handleViewTenderDetails}
             onCreateTender={handleCreateNewTender}
-            projectId=""
             selectedTender={selectedTender}
           />
         </div>
@@ -242,7 +233,7 @@ export function Tenders() {
           >
             <TenderSidecard
               tender={selectedTender}
-              onClose={() => setSelectedTender(null)}
+              onClose={() => setSelectedTender(undefined)}
             />
           </Panel>
         </PanelGroup>
