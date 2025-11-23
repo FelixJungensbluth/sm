@@ -26,6 +26,7 @@ class TenderProcessingStatus(str, Enum):
 class Tender(BaseModel):
     id: uuid.UUID
     title: str
+    generated_title: str
     description: str
     base_information: list[BaseInformation]
     status: TenderReviewStatus
@@ -33,10 +34,11 @@ class Tender(BaseModel):
     updated_at: datetime
 
     @classmethod
-    def create(cls, name: str) -> "Tender":
+    def create(cls, title: str) -> "Tender":
         return cls(
             id=uuid.uuid4(),
-            title=name,
+            title=title,
+            generated_title="",
             description="",
             base_information=[],
             status=TenderReviewStatus.in_review,
@@ -47,6 +49,7 @@ class Tender(BaseModel):
 
 class TenderUpdate(BaseModel):
     title: Optional[str] = None
+    generated_title: Optional[str] = None
     description: Optional[str] = None
     base_information: Optional[list[BaseInformation]] = None
     status: Optional[TenderReviewStatus] = None

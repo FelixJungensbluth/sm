@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, ExternalLink, Save, Edit2, Check, X as XIcon, Eye } from "lucide-react";
+import { X, ExternalLink, Save, Edit2, Check, X as XIcon, Eye, FileText, ClipboardList, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,10 +10,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useNavigate, useParams } from "react-router-dom";
-import { useUpdateTender } from "@/hooks/use-tenders";
+import { useUpdateTender, useDeleteTender } from "@/hooks/use-tenders";
 import { statusLabels, statusBoardColors } from "@/utils/status-labels";
-import type { Tender, TenderStatus, BaseInformation } from "@/services/api/api";
+import type { Tender, TenderReviewStatus, BaseInformation } from "@/services/api/api";
 import { cn } from "@/lib/utils";
 import { TENDER_STATUSES } from "@/lib/types";
 
@@ -26,11 +34,12 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId?: string }>();
   const updateTender = useUpdateTender();
+  const deleteTender = useDeleteTender();
 
   // Form state
   const [title, setTitle] = useState(tender.title);
   const [description, setDescription] = useState(tender.description);
-  const [status, setStatus] = useState<TenderStatus>(tender.status);
+  const [status, setStatus] = useState<TenderReviewStatus>(tender.status);
   const [baseInformation, setBaseInformation] = useState<BaseInformation[]>(
     tender.base_information || []
   );
@@ -38,11 +47,12 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
   // Edit mode state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [editingBaseInfoIndex, setEditingBaseInfoIndex] = useState<number | null>(null);
+  const [isEditingBaseInfo, setIsEditingBaseInfo] = useState(false);
 
   // Track if there are unsaved changes
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Update local state when tender prop changes
   useEffect(() => {
@@ -79,6 +89,30 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
     }
   };
 
+  const handleOpenRequirements = () => {
+    if (projectId) {
+      navigate(`/projects/${projectId}/tenders/${tender.id}/requirements`);
+    } else {
+      navigate(`/tenders/${tender.id}/requirements`);
+    }
+  };
+
+  const handleOpenBaseInfoReview = () => {
+    if (projectId) {
+      navigate(`/projects/${projectId}/tenders/${tender.id}/view`);
+    } else {
+      navigate(`/tenders/${tender.id}/view`);
+    }
+  };
+
+  const handleDelete = () => {
+    deleteTender.mutate(tender.id, {
+      onSuccess: () => {
+        onClose();
+      },
+    });
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -95,7 +129,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
       });
       setIsEditingTitle(false);
       setIsEditingDescription(false);
-      setEditingBaseInfoIndex(null);
+      setIsEditingBaseInfo(false);
     } catch (error) {
       console.error("Failed to save tender:", error);
     } finally {
@@ -110,7 +144,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
     setBaseInformation(tender.base_information || []);
     setIsEditingTitle(false);
     setIsEditingDescription(false);
-    setEditingBaseInfoIndex(null);
+    setIsEditingBaseInfo(false);
   };
 
   const handleBaseInfoFieldChange = (
@@ -140,18 +174,29 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
         fulfillable: null,
       },
     ]);
-    setEditingBaseInfoIndex(baseInformation.length);
-  };
-
-  const handleRemoveBaseInfo = (index: number) => {
-    setBaseInformation(baseInformation.filter((_, i) => i !== index));
-    if (editingBaseInfoIndex === index) {
-      setEditingBaseInfoIndex(null);
-    }
+    setIsEditingBaseInfo(true);
   };
 
   const statusColor = statusBoardColors[status];
   const statusLabel = statusLabels[status];
+
+  // Central fields that should be displayed as header
+  const CENTRAL_FIELDS = ['type', 'client', 'questions_deadline', 'submission_deadline'];
+  
+  const isCentralField = (fieldName: string | null) => {
+    if (!fieldName) return false;
+    return CENTRAL_FIELDS.some(central => 
+      fieldName.toLowerCase().includes(central.toLowerCase())
+    );
+  };
+
+  const getCentralFields = () => {
+    return baseInformation.filter(info => isCentralField(info.field_name));
+  };
+
+  const getOtherFields = () => {
+    return baseInformation.filter(info => !isCentralField(info.field_name));
+  };
 
   return (
     <div className="h-full flex flex-col bg-background border-l">
@@ -179,7 +224,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
             </div>
           ) : (
             <h2
-              className="text-lg font-semibold truncate flex-1 cursor-text hover:bg-muted/50 px-2 py-1 -mx-2 -my-1 rounded"
+              className="text-lg font-semibold truncate flex-1 cursor-text hover:bg-muted/50 px-2 py-1 -mx-2 -my-1"
               onClick={() => setIsEditingTitle(true)}
               title="Click to edit"
             >
@@ -214,12 +259,32 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
           <Button
             variant="ghost"
             size="icon"
+            onClick={handleOpenRequirements}
+            className="h-8 w-8 flex-shrink-0"
+            aria-label="Open requirements"
+            title="Open requirements"
+          >
+            <FileText className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleOpenDetailPage}
             className="h-8 w-8 flex-shrink-0"
             aria-label="Open tender detail page"
             title="Open in full page"
           >
             <ExternalLink className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowDeleteDialog(true)}
+            className="h-8 w-8 flex-shrink-0 text-destructive hover:text-destructive"
+            aria-label="Delete tender"
+            title="Delete tender"
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
@@ -249,21 +314,35 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                   className="w-full justify-start gap-2 h-8 text-sm"
                 >
                   <div
-                    className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                    className="h-2.5 w-2.5 flex-shrink-0"
                     style={{ backgroundColor: `hsl(var(${statusColor}))` }}
                   />
                   <span className="flex-1 text-left">{statusLabel}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[200px]">
+              <DropdownMenuContent align="start" className="w-[200px] bg-popover">
                 {TENDER_STATUSES.map((s) => (
                   <DropdownMenuItem
                     key={s}
-                    onClick={() => setStatus(s)}
+                    onClick={async () => {
+                      if (s !== tender.status) {
+                        setStatus(s);
+                        try {
+                          await updateTender.mutateAsync({
+                            id: tender.id,
+                            data: { status: s },
+                          });
+                        } catch (error) {
+                          console.error("Failed to update status:", error);
+                          // Revert on error
+                          setStatus(tender.status);
+                        }
+                      }
+                    }}
                     className="flex items-center gap-2"
                   >
                     <div
-                      className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                      className="h-2.5 w-2.5 flex-shrink-0"
                       style={{
                         backgroundColor: `hsl(var(${statusBoardColors[s]}))`,
                       }}
@@ -277,6 +356,9 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
+          {/* Separator */}
+          <div className="border-t border-border" />
 
           {/* Description */}
           <div className="space-y-1.5">
@@ -328,7 +410,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
               </div>
             ) : (
               <div
-                className="text-sm text-foreground whitespace-pre-wrap break-words p-2 rounded-md border border-transparent hover:border-border cursor-text min-h-[40px]"
+                className="text-sm text-foreground whitespace-pre-wrap break-words p-2 border border-transparent hover:border-border cursor-text min-h-[40px]"
                 onClick={() => setIsEditingDescription(true)}
               >
                 {description || (
@@ -340,238 +422,475 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
             )}
           </div>
 
+          {/* Separator */}
+          <div className="border-t border-border" />
+
           {/* Base Information */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Base Information
               </Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleAddBaseInfo}
-                className="h-6 px-2 text-xs"
-              >
-                + Add
-              </Button>
+              <div className="flex items-center gap-1">
+                {!isEditingBaseInfo && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditingBaseInfo(true)}
+                    className="h-6 px-2 text-xs"
+                  >
+                    <Edit2 className="h-3 w-3 mr-1" />
+                    Edit
+                  </Button>
+                )}
+                {isEditingBaseInfo && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleAddBaseInfo}
+                    className="h-6 px-2 text-xs"
+                  >
+                    + Add
+                  </Button>
+                )}
+              </div>
             </div>
             {baseInformation.length === 0 ? (
-              <div className="text-xs text-muted-foreground italic p-2 rounded-md border border-dashed">
-                No base information. Click "Add" to add a field.
+              <div className="text-xs text-muted-foreground italic p-2 border border-dashed">
+                No base information. Click "Edit" to add a field.
+              </div>
+            ) : isEditingBaseInfo ? (
+              <div className="space-y-4">
+                {/* Central Fields in Edit Mode */}
+                {getCentralFields().length > 0 && (
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Central Information
+                    </Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {getCentralFields().map((info) => {
+                        const originalIndex = baseInformation.findIndex(
+                          item => item === info
+                        );
+                        return (
+                          <div
+                            key={originalIndex}
+                            className="p-3 border border-primary bg-muted/30 space-y-2"
+                          >
+                            <div className="space-y-1">
+                              <Label className="text-xs">Field Name</Label>
+                              <Input
+                                value={info.field_name || ""}
+                                onChange={(e) =>
+                                  handleBaseInfoFieldChange(
+                                    originalIndex,
+                                    "field_name",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., submission_deadline"
+                                className="h-7 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Value</Label>
+                              <Input
+                                value={info.value || ""}
+                                onChange={(e) =>
+                                  handleBaseInfoFieldChange(
+                                    originalIndex,
+                                    "value",
+                                    e.target.value || null
+                                  )
+                                }
+                                placeholder="Enter value..."
+                                className="h-7 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Note</Label>
+                              <Textarea
+                                value={info.note || ""}
+                                onChange={(e) =>
+                                  handleBaseInfoFieldChange(
+                                    originalIndex,
+                                    "note",
+                                    e.target.value || null
+                                  )
+                                }
+                                placeholder="Add a note..."
+                                className="min-h-[50px] resize-none text-sm"
+                              />
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <label className="flex items-center gap-2 text-xs cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={info.approved === true}
+                                  onChange={(e) =>
+                                    handleBaseInfoFieldChange(
+                                      originalIndex,
+                                      "approved",
+                                      e.target.checked ? true : null
+                                    )
+                                  }
+                                  className="h-4 w-4"
+                                />
+                                Approved
+                              </label>
+                              <label className="flex items-center gap-2 text-xs cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={info.fulfillable === true}
+                                  onChange={(e) =>
+                                    handleBaseInfoFieldChange(
+                                      originalIndex,
+                                      "fulfillable",
+                                      e.target.checked ? true : null
+                                    )
+                                  }
+                                  className="h-4 w-4"
+                                />
+                                Fulfillable
+                              </label>
+                            </div>
+                            {info.exact_text && (
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                  Exact Text (read-only)
+                                </Label>
+                                <div className="text-xs text-muted-foreground p-1.5 bg-muted border">
+                                  {info.exact_text}
+                                </div>
+                              </div>
+                            )}
+                            {info.source_file && (
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                  Source File (read-only)
+                                </Label>
+                                <div className="text-xs text-muted-foreground p-1.5 bg-muted border">
+                                  {info.source_file}
+                                </div>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-end pt-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setBaseInformation(baseInformation.filter((_, i) => i !== originalIndex));
+                                }}
+                                className="h-7 text-xs text-destructive hover:text-destructive"
+                              >
+                                <XIcon className="h-3 w-3 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Separator between central and other fields in edit mode */}
+                {getCentralFields().length > 0 && getOtherFields().length > 0 && (
+                  <div className="border-t border-border" />
+                )}
+
+                {/* Other Fields in Edit Mode */}
+                {getOtherFields().length > 0 && (
+                  <div className="space-y-3">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Additional Information
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {getOtherFields().map((info) => {
+                        const originalIndex = baseInformation.findIndex(
+                          item => item === info
+                        );
+                        return (
+                          <div
+                            key={originalIndex}
+                            className="p-3 border border-border bg-card space-y-2"
+                          >
+                            <div className="space-y-1">
+                              <Label className="text-xs">Field Name</Label>
+                              <Input
+                                value={info.field_name || ""}
+                                onChange={(e) =>
+                                  handleBaseInfoFieldChange(
+                                    originalIndex,
+                                    "field_name",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., submission_deadline"
+                                className="h-7 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Value</Label>
+                              <Input
+                                value={info.value || ""}
+                                onChange={(e) =>
+                                  handleBaseInfoFieldChange(
+                                    originalIndex,
+                                    "value",
+                                    e.target.value || null
+                                  )
+                                }
+                                placeholder="Enter value..."
+                                className="h-7 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Note</Label>
+                              <Textarea
+                                value={info.note || ""}
+                                onChange={(e) =>
+                                  handleBaseInfoFieldChange(
+                                    originalIndex,
+                                    "note",
+                                    e.target.value || null
+                                  )
+                                }
+                                placeholder="Add a note..."
+                                className="min-h-[50px] resize-none text-sm"
+                              />
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <label className="flex items-center gap-2 text-xs cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={info.approved === true}
+                                  onChange={(e) =>
+                                    handleBaseInfoFieldChange(
+                                      originalIndex,
+                                      "approved",
+                                      e.target.checked ? true : null
+                                    )
+                                  }
+                                  className="h-4 w-4"
+                                />
+                                Approved
+                              </label>
+                              <label className="flex items-center gap-2 text-xs cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={info.fulfillable === true}
+                                  onChange={(e) =>
+                                    handleBaseInfoFieldChange(
+                                      originalIndex,
+                                      "fulfillable",
+                                      e.target.checked ? true : null
+                                    )
+                                  }
+                                  className="h-4 w-4"
+                                />
+                                Fulfillable
+                              </label>
+                            </div>
+                            {info.exact_text && (
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                  Exact Text (read-only)
+                                </Label>
+                                <div className="text-xs text-muted-foreground p-1.5 bg-muted border">
+                                  {info.exact_text}
+                                </div>
+                              </div>
+                            )}
+                            {info.source_file && (
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">
+                                  Source File (read-only)
+                                </Label>
+                                <div className="text-xs text-muted-foreground p-1.5 bg-muted border">
+                                  {info.source_file}
+                                </div>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-end pt-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setBaseInformation(baseInformation.filter((_, i) => i !== originalIndex));
+                                }}
+                                className="h-7 text-xs text-destructive hover:text-destructive"
+                              >
+                                <XIcon className="h-3 w-3 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 pt-2 border-t border-border">
+                  <Button
+                    size="sm"
+                    onClick={() => setIsEditingBaseInfo(false)}
+                    className="h-7 text-xs"
+                  >
+                    Done Editing
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                {baseInformation.map((info, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      "p-2 rounded-md border",
-                      editingBaseInfoIndex === index
-                        ? "border-primary bg-muted/30"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    {editingBaseInfoIndex === index ? (
-                      <div className="space-y-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Field Name</Label>
-                          <Input
-                            value={info.field_name || ""}
-                            onChange={(e) =>
-                              handleBaseInfoFieldChange(
-                                index,
-                                "field_name",
-                                e.target.value
-                              )
-                            }
-                            placeholder="e.g., submission_deadline"
-                            className="h-7 text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Value</Label>
-                          <Input
-                            value={info.value || ""}
-                            onChange={(e) =>
-                              handleBaseInfoFieldChange(
-                                index,
-                                "value",
-                                e.target.value || null
-                              )
-                            }
-                            placeholder="Enter value..."
-                            className="h-7 text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Note</Label>
-                          <Textarea
-                            value={info.note || ""}
-                            onChange={(e) =>
-                              handleBaseInfoFieldChange(
-                                index,
-                                "note",
-                                e.target.value || null
-                              )
-                            }
-                            placeholder="Add a note..."
-                            className="min-h-[50px] resize-none text-sm"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <label className="flex items-center gap-2 text-xs cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={info.approved === true}
-                              onChange={(e) =>
-                                handleBaseInfoFieldChange(
-                                  index,
-                                  "approved",
-                                  e.target.checked ? true : null
-                                )
-                              }
-                              className="h-4 w-4"
-                            />
-                            Approved
-                          </label>
-                          <label className="flex items-center gap-2 text-xs cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={info.fulfillable === true}
-                              onChange={(e) =>
-                                handleBaseInfoFieldChange(
-                                  index,
-                                  "fulfillable",
-                                  e.target.checked ? true : null
-                                )
-                              }
-                              className="h-4 w-4"
-                            />
-                            Fulfillable
-                          </label>
-                        </div>
-                        {info.exact_text && (
+              <div className="space-y-3">
+                {/* Central Fields Header */}
+                {getCentralFields().length > 0 && (
+                  <div className="grid grid-cols-2 border border-border">
+                    {getCentralFields().map((info, idx) => {
+                      const originalIndex = baseInformation.findIndex(
+                        item => item === info
+                      );
+                      const isRightColumn = idx % 2 === 1; // odd indices are right column
+                      const totalItems = getCentralFields().length;
+                      const hasItemBelow = idx + 2 < totalItems;
+                      return (
+                        <div
+                          key={originalIndex}
+                          className={cn(
+                            "p-2.5 bg-muted/30 hover:bg-muted/50 transition-colors border-r border-b border-border",
+                            isRightColumn && "border-r-0",
+                            !hasItemBelow && "border-b-0"
+                          )}
+                        >
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">
-                              Exact Text (read-only)
-                            </Label>
-                            <div className="text-xs text-muted-foreground p-1.5 bg-muted rounded border">
-                              {info.exact_text}
-                            </div>
-                          </div>
-                        )}
-                        {info.source_file && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">
-                              Source File (read-only)
-                            </Label>
-                            <div className="text-xs text-muted-foreground p-1.5 bg-muted rounded border">
-                              {info.source_file}
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 pt-1">
-                          <Button
-                            size="sm"
-                            onClick={() => setEditingBaseInfoIndex(null)}
-                            className="h-7 text-xs"
-                          >
-                            Done
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleRemoveBaseInfo(index)}
-                            className="h-7 text-xs text-destructive hover:text-destructive"
-                          >
-                            <XIcon className="h-3 w-3 mr-1" />
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        className="space-y-1.5 cursor-pointer"
-                        onClick={() => setEditingBaseInfoIndex(index)}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-muted-foreground mb-0.5">
+                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                               {info.field_name || "Unnamed Field"}
                             </div>
                             {info.value && (
-                              <div className="text-sm text-foreground break-words">
+                              <div className="text-base font-semibold text-foreground">
+                                {info.value}
+                              </div>
+                            )}
+                            {!info.value && (
+                              <div className="text-sm text-muted-foreground italic">
+                                No value
+                              </div>
+                            )}
+                            {info.note && (
+                              <div className="text-xs text-muted-foreground mt-1 italic line-clamp-2">
+                                {info.note}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1 mt-1">
+                              {info.approved && (
+                                <span className="text-xs px-1.5 py-0.5 bg-green-500/20 text-green-700 dark:text-green-400 font-medium">
+                                  ✓ Approved
+                                </span>
+                              )}
+                              {info.fulfillable && (
+                                <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-700 dark:text-blue-400 font-medium">
+                                  ⚡ Fulfillable
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Separator between central and other fields */}
+                {getCentralFields().length > 0 && getOtherFields().length > 0 && (
+                  <div className="border-t border-border" />
+                )}
+
+                {/* Other Fields Grid */}
+                {getOtherFields().length > 0 && (
+                  <div className="grid grid-cols-2 border border-border">
+                    {getOtherFields().map((info, idx) => {
+                      const originalIndex = baseInformation.findIndex(
+                        item => item === info
+                      );
+                      const isRightColumn = idx % 2 === 1; // odd indices are right column
+                      const totalItems = getOtherFields().length;
+                      const hasItemBelow = idx + 2 < totalItems;
+                      return (
+                        <div
+                          key={originalIndex}
+                          className={cn(
+                            "p-2.5 bg-card hover:bg-muted/50 transition-colors border-r border-b border-border",
+                            isRightColumn && "border-r-0",
+                            !hasItemBelow && "border-b-0"
+                          )}
+                        >
+                          <div className="space-y-1">
+                            <div className="text-xs font-semibold text-foreground">
+                              {info.field_name || "Unnamed Field"}
+                            </div>
+                            {info.value && (
+                              <div className="text-sm text-foreground break-words font-medium">
                                 {info.value}
                               </div>
                             )}
                             {info.note && (
-                              <div className="text-xs text-muted-foreground mt-0.5 italic">
-                                Note: {info.note}
+                              <div className="text-xs text-muted-foreground mt-0.5 italic line-clamp-2">
+                                {info.note}
                               </div>
                             )}
-                            {info.exact_text && (
-                              <div className="text-xs text-muted-foreground mt-0.5 p-1.5 bg-muted rounded border">
-                                "{info.exact_text}"
+                            {info.source_file && (
+                              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                Source: {info.source_file}
                               </div>
                             )}
-                          </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            {info.approved && (
-                              <span className="text-xs px-1 py-0.5 rounded bg-green-500/20 text-green-700 dark:text-green-400">
-                                Approved
-                              </span>
-                            )}
-                            {info.fulfillable && (
-                              <span className="text-xs px-1 py-0.5 rounded bg-blue-500/20 text-blue-700 dark:text-blue-400">
-                                Fulfillable
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1 mt-1">
+                              {info.approved && (
+                                <span className="text-xs px-1 py-0.5 bg-green-500/20 text-green-700 dark:text-green-400">
+                                  ✓
+                                </span>
+                              )}
+                              {info.fulfillable && (
+                                <span className="text-xs px-1 py-0.5 bg-blue-500/20 text-blue-700 dark:text-blue-400">
+                                  ⚡
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        {info.source_file && (
-                          <div className="text-xs text-muted-foreground">
-                            Source: {info.source_file}
-                          </div>
-                        )}
-                        <div className="pt-0.5">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingBaseInfoIndex(index);
-                            }}
-                            className="h-6 px-2 text-xs"
-                          >
-                            <Edit2 className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
-                ))}
+                )}
+
+                {baseInformation.length === 0 && (
+                  <div className="text-xs text-muted-foreground italic p-2 border border-dashed">
+                    No base information. Click "Edit" to add a field.
+                  </div>
+                )}
               </div>
             )}
-          </div>
 
-          <div className="space-y-1.5 pt-3 border-t">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Metadata
-            </Label>
-            <div className="space-y-1 text-xs">
-              <div>
-                <span className="text-muted-foreground">ID: </span>
-                <span className="font-mono text-xs">{tender.id}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Created: </span>
-                <span>{new Date(tender.created_at).toLocaleString()}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Updated: </span>
-                <span>{new Date(tender.updated_at).toLocaleString()}</span>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex flex-row gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenBaseInfoReview}
+                className="flex-1 justify-center gap-2 h-8 text-xs bg-black text-white hover:bg-black/80"
+              >
+                <ClipboardList className="h-3.5 w-3.5" />
+                Review Base Information
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenRequirements}
+                className="flex-1 justify-center gap-2 h-8 text-xs bg-black text-white hover:bg-black/80"
+              >
+                <Search className="h-3.5 w-3.5" />
+                Extract Requirements
+              </Button>
             </div>
           </div>
         </div>
@@ -609,6 +928,34 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
           </Button>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Tender</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{tender.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleteTender.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteTender.isPending}
+            >
+              {deleteTender.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

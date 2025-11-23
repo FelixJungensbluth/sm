@@ -1,3 +1,4 @@
+from app.models.base_information import BaseInformationStatus
 from typing import List, Optional
 from pymongo import MongoClient
 from datetime import datetime, timezone
@@ -76,6 +77,13 @@ class TenderRepo:
             return result.deleted_count > 0
         except Exception:
             return False
+    
+    def update_tender_base_information_status(self, tender_id: uuid.UUID, field_name: str, base_information_status: BaseInformationStatus) -> bool:
+        result = self.collection.update_one(
+            {"id": str(tender_id), "base_information.field_name": field_name},
+            {"$set": {"base_information.$.status": base_information_status.value}}
+        )
+        return result.matched_count > 0
 
     def _tender_to_doc(self, tender: Tender) -> dict:
         doc = tender.model_dump()
@@ -144,6 +152,7 @@ class TenderRepo:
             return Tender(
                 id=tender_id,
                 title=doc.get("title", ""),
+                generated_title=doc.get("generated_title", ""),
                 description=doc.get("description", ""),
                 base_information=base_information,
                 status=status,

@@ -1,3 +1,6 @@
+from app.embedding.provider.ollama import OllamaEmbedding
+from app.embedding.provider.sentence_transformer import SentenceTransformerEmbedding
+from app.embedding.provider.base_embedding import BaseEmbedding
 import yaml
 from pathlib import Path
 from typing import Optional
@@ -36,23 +39,50 @@ def get_llm_provider(
     model_configs = provider_config.get("models")
     
     provider_lower = provider.lower()
-    if provider_lower == "ollama":
-        return Ollama(
-            settings=settings,
-            model_name=model,
-            api_url=api_url,
-            model_configs=model_configs,
-        )
-    elif provider_lower == "openai":
-        return OpenAi(
-            settings=settings,
-            model_name=model,
-            api_url=api_url,
-            model_configs=model_configs,
-        )
-    else:
-        raise ValueError(
-            f"Unknown LLM provider '{provider}'. "
-            f"Available providers: ollama, openai"
-        )
+    match provider_lower:
+        case "ollama":
+            return Ollama(
+                settings=settings,
+                model_name=model,
+                api_url=api_url,
+                model_configs=model_configs,
+            )
+        case "openai":
+            return OpenAi(
+                settings=settings,
+                model_name=model,
+                api_url=api_url,
+                model_configs=model_configs,
+            )
+        case _:
+            raise ValueError(f"Unknown LLM provider '{provider}'")      
 
+
+
+def get_embedding_provider(
+    settings: SettingsDep,
+) -> BaseEmbedding:
+    config = _load_config()
+    embedding_config = config.get("embedding", {})
+    provider = embedding_config.get("provider")
+    model = embedding_config.get("default_model")
+    
+    if not provider:
+        raise ValueError("Embedding provider not specified in config or parameter")
+    if not model:
+        raise ValueError("Embedding model not specified in config or parameter")
+
+    provider_lower = provider.lower()
+    match provider_lower:
+        case "sentence_transformer":
+            return SentenceTransformerEmbedding(
+                settings=settings,
+                model_name=model,
+            )
+        case "ollama":
+            return OllamaEmbedding(
+                settings=settings,
+                model_name=model,
+            )
+        case _:
+            raise ValueError(f"Unknown embedding provider '{provider}'")

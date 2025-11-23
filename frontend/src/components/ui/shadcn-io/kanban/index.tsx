@@ -160,7 +160,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
     >
       <span className="flex-1 flex items-center gap-2">
         <div
-          className="h-2 w-2 rounded-full"
+          className="h-2 w-2"
           style={{ backgroundColor: `hsl(var(${props.color}))` }}
         />
 

@@ -110,7 +110,7 @@ export function JobStatusView() {
           <Activity className="h-4 w-4" />
         )}
         {allActiveJobs.length > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center bg-red-500 text-xs text-white">
             {allActiveJobs.length}
           </span>
         )}
@@ -137,7 +137,7 @@ export function JobStatusView() {
                   return (
                     <div
                       key={jobId}
-                      className="rounded-lg border p-4 space-y-3 bg-background"
+                      className="border p-4 space-y-3 bg-background"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2 flex-1 min-w-0">

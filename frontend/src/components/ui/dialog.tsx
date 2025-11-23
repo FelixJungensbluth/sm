@@ -48,14 +48,14 @@ const Dialog = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          'relative z-[9999] grid w-full max-w-lg gap-4 bg-background border p-6 shadow-lg duration-200 sm:rounded-lg my-8',
+          'relative z-[9999] grid w-full max-w-lg gap-4 bg-background border p-6 shadow-lg duration-200 my-8',
           className
         )}
         {...props}
       >
         {!uncloseable && (
           <button
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="absolute right-4 top-4 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             onClick={() => onOpenChange?.(false)}
           >
             <X className="h-4 w-4" />

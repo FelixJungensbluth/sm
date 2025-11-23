@@ -1,3 +1,5 @@
+import { STATUS_STYLE_MAP } from '@/constants/requirement-status';
+import type { RequirementStatus } from '@/services/api/api';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -17,3 +19,15 @@ export function cleanMarkdownSnippets(text: string[]) {
     })
     .filter((t) => t.length > 3);
 }
+
+export function normalizeText(text: string) {
+  return text
+    .replace(/[\s-]+/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, '')
+    .toLowerCase();
+}
+
+export const getStatusClasses = (status: RequirementStatus | 'Nicht gesetzt') => {
+  const styles = STATUS_STYLE_MAP[status] ?? { bg: 'bg-gray-100', text: 'text-gray-800' };
+  return clsx(styles.bg, styles.text);
+};

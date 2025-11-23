@@ -198,7 +198,7 @@ export function Tenders() {
           <Panel
             id="main-view"
             defaultSize={50}
-            minSize={20}
+            minSize={50}
             className="min-w-0 min-h-0 overflow-hidden"
           >
             {renderMainView()}
@@ -210,7 +210,7 @@ export function Tenders() {
           <Panel
             id="sidecard"
             defaultSize={50}
-            minSize={20}
+            minSize={25}
             className="min-w-0 min-h-0 overflow-hidden"
           >
             <TenderSidecard

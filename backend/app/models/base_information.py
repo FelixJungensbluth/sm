@@ -1,5 +1,11 @@
+from enum import Enum
 from pydantic import BaseModel, Field
 from typing import Optional
+
+class BaseInformationStatus(Enum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    PENDING = "pending"
 
 class BaseInformation(BaseModel):
     value: Optional[str] = Field(
@@ -15,7 +21,7 @@ class BaseInformation(BaseModel):
         None, description="The exact text passage from the document"
     )
     field_name: str = Field(description="The field which is extracted")
-    approved: bool| None = None
+    status: BaseInformationStatus = BaseInformationStatus.PENDING
     note: Optional[str] = None
     fulfillable: Optional[bool] = None
 

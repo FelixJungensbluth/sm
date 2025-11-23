@@ -134,7 +134,7 @@ export function FileDropzone({
           {selectedFiles.map((file, index) => (
             <div
               key={`${file.name}-${index}-${file.size}`}
-              className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm"
+              className="flex items-center gap-2 p-2 bg-muted text-sm"
             >
               {file.fullPath?.includes('/') ? (
                 <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -170,7 +170,7 @@ export function FileDropzone({
           {rejectedFiles.map((fileName, index) => (
             <div
               key={`rejected-${index}-${fileName}`}
-              className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive"
+              className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 text-sm text-destructive"
             >
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span className="flex-1 truncate" title={fileName}>

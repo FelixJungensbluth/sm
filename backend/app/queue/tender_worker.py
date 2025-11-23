@@ -1,3 +1,4 @@
+from app.config.app_config import get_embedding_provider
 from app.repos.requirements_repo import RequirementsRepo
 from app.services.requirements_extraction_service import RequirementExtractionService
 from app.models.tender import TenderUpdate
@@ -34,13 +35,18 @@ class WorkerContext:
         self.settings = get_settings()
         self.mongo_client = get_mongo_client()
         self.minio_service = MinioService(self.settings)
+        
         self.tender_repo = TenderRepo(self.mongo_client)
         self.document_repo = DocumentRepo(self.mongo_client)
-        self.rag_service = RagService(self.settings)
+        self.requirements_repo = RequirementsRepo(self.mongo_client)
+
         self.llm_provider = get_llm_provider(self.settings)
+        self.embedding_provider = get_embedding_provider(self.settings)
+
+        self.rag_service = RagService(self.settings, self.embedding_provider)
         self.base_information_service = BaseInformationService(self.settings, self.llm_provider, self.rag_service)
         self.requirement_service = RequirementExtractionService(self.settings, self.llm_provider)
-        self.requirements_repo = RequirementsRepo(self.mongo_client)
+       
 
 
 ctx: WorkerContext | None = None
@@ -82,8 +88,12 @@ async def run_extract_base_information(job: dict) -> None:
             tender.id
         )
 
+        logger.info(f"Base information: {len(base_information[0])}")
+
         if base_information:
-            tender_update = TenderUpdate(base_information=base_information)
+            base_information, description, name = base_information
+
+            tender_update = TenderUpdate(base_information=base_information, description=description, generated_title=name)
             context.tender_repo.update_tender(tender.id, tender_update)
 
 async def run_extract_requirements(job: dict) -> None:
@@ -94,6 +104,7 @@ async def run_extract_requirements(job: dict) -> None:
         documents = context.document_repo.get_documents_by_tender_id(tender.id)
         processed_documents = context.minio_service.get_processed_files(documents)
         requirements = await context.requirement_service.extract_requirements(tender.id, processed_documents)
+        logger.info(f"Requirements: {len(requirements)}")
 
         if requirements:
             context.requirements_repo.create_requirements(requirements)

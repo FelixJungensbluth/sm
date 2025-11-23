@@ -1,3 +1,4 @@
+from app.models.requirement import RequirementStatus
 from app.models.requirement import Requirement
 import uuid
 from pymongo import MongoClient
@@ -18,3 +19,7 @@ class RequirementsRepo:
             doc["tender_id"] = str(req.tender_id)
             docs.append(doc)
         self.collection.insert_many(docs)
+
+
+    def update_requirement_status(self, requirement_id: uuid.UUID, requirement_status: RequirementStatus) :
+        self.collection.update_one({"id": str(requirement_id)}, {"$set": {"status": requirement_status.value}})

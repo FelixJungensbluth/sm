@@ -1,3 +1,4 @@
+from typing import Tuple
 from dataclasses import dataclass
 import re
 from typing import Dict, List
@@ -340,14 +341,17 @@ class BaseInformationService:
 
     async def extract_base_information(
         self, tender_id: uuid.UUID
-    ) -> List[BaseInformation]:
+    ) -> Tuple[List[BaseInformation], str | None, str | None]:
         base_information_requests = await self.create_requests(tender_id)
 
         llm_requests = [req.request for req in base_information_requests]
         results = await self.llm_provider.process_requests(llm_requests)
-        parsed_results = self.parse_results(results, base_information_requests, 0)
+        parsed_results, description, name = self.parse_results(results, base_information_requests, 0)
 
-        return list(parsed_results.values()) if parsed_results else []
+        if description and name:
+            return list(parsed_results.values()) if parsed_results else [], description.value, name.value
+        else:
+            return list(parsed_results.values()) if parsed_results else [], None, None
 
     def parse_results(
         self,
@@ -356,10 +360,13 @@ class BaseInformationService:
         attempt: int,
     ):
         successful_results = {}
+        description = None
+        name = None
 
         for successful_response, req in zip(results, base_information_requests):
             field_name = req.field_name
 
+           
             try:
                 output = self.llm_provider.get_output(successful_response, only_json=True)
                 parsed_result: BaseInformation = self.parser.parse(output)
@@ -381,6 +388,9 @@ class BaseInformationService:
                     successful_results[field_name] = base_information
 
                     if field_name == "compact_description":
+                        description = base_information
+                    elif field_name == "name":
+                        name = base_information
                         continue
 
                     if not parsed_result.exact_text:
@@ -398,4 +408,4 @@ class BaseInformationService:
             except Exception as e:
                 logger.error(f"Field '{field_name}' attempt {attempt} failed: {e}")
 
-        return successful_results
+        return successful_results, description, name

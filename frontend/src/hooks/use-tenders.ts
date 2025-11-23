@@ -69,8 +69,9 @@ export function useUpdateTender() {
       }
     },
     onSuccess: (_data, variables) => {
-      // Only invalidate the single tender query to get the full updated data
+      // Invalidate both the single tender and the tenders list to ensure UI updates
       queryClient.invalidateQueries({ queryKey: ['tender', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['tenders'] });
     },
   });
 }

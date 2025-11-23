@@ -28,7 +28,7 @@ export function FileTree({ documents, selectedFileId, onSelectFile }: FileTreePr
             key={doc.id}
             onClick={() => onSelectFile(doc.id)}
             className={cn(
-              'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left transition-colors',
+              'w-full flex items-center gap-2 px-2 py-1.5 text-sm text-left transition-colors',
               'hover:bg-accent',
               selectedFileId === doc.id
                 ? 'bg-accent text-foreground font-medium'

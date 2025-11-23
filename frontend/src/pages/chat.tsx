@@ -177,7 +177,7 @@ export function Chat() {
                       key={conv.id}
                       onClick={() => setSelectedConversationId(conv.id)}
                       className={cn(
-                        'group relative p-3 rounded-lg cursor-pointer transition-colors mb-1',
+                        'group relative p-3 cursor-pointer transition-colors mb-1',
                         selectedConversationId === conv.id
                           ? 'bg-accent'
                           : 'hover:bg-accent/50'
@@ -226,10 +226,10 @@ export function Chat() {
           aria-orientation="vertical"
         >
           <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
-          <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
-            <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-            <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-            <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+          <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
+            <span className="w-1 h-1 bg-muted-foreground" />
+            <span className="w-1 h-1 bg-muted-foreground" />
+            <span className="w-1 h-1 bg-muted-foreground" />
           </div>
         </PanelResizeHandle>
 
@@ -254,7 +254,7 @@ export function Chat() {
                   >
                     <div
                       className={cn(
-                        'max-w-[80%] rounded-lg px-4 py-2',
+                        'max-w-[80%] px-4 py-2',
                         message.role === 'user'
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted'

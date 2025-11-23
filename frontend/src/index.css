@@ -319,12 +319,12 @@
 
     code {
       background-color: hsl(var(--muted));
-      @apply px-1.5 py-0.5 rounded text-sm font-mono;
+      @apply px-1.5 py-0.5 text-sm font-mono;
     }
 
     pre {
       background-color: hsl(var(--muted));
-      @apply p-4 rounded-lg overflow-x-auto mb-4;
+      @apply p-4 overflow-x-auto mb-4;
     }
 
     pre code {
@@ -370,17 +370,28 @@
     }
 
     mark {
-      @apply bg-yellow-200 dark:bg-yellow-800 px-1 rounded;
+      @apply bg-yellow-200 dark:bg-yellow-800 px-1;
     }
 
     .highlight-selected {
-      background-color: hsl(var(--info) / 0.3);
-      @apply px-1 rounded;
+      background-color: hsl(var(--info) / 0.5) !important;
+      @apply px-1;
+      border: 2px solid hsl(var(--info));
+    }
+
+    .highlight-exclusion-requirement {
+      background-color: hsl(var(--destructive) / 0.2);
+      @apply px-1;
+    }
+
+    .highlight-evaluation-requirement {
+      background-color: hsl(var(--info) / 0.2);
+      @apply px-1;
     }
 
     .highlight-search {
       background-color: hsl(var(--warning) / 0.3);
-      @apply px-1 rounded;
+      @apply px-1;
     }
   }
 }

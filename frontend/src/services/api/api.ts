@@ -26,6 +26,26 @@ export type TenderProcessingStatus =
   | "error"
   | "cancelled";
 
+/** RequirementType */
+export type RequirementType =
+  | "Business"
+  | "Zu erarbeiten"
+  | "Referenzprojekt"
+  | "Nachweis Zertifikat"
+  | "Nachweis Personal"
+  | "Sonstiges";
+
+/** RequirementStatus */
+export type RequirementStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "deleted"
+  | "duplicate";
+
+/** BaseInformationStatus */
+export type BaseInformationStatus = "approved" | "rejected" | "pending";
+
 /** BaseInformation */
 export interface BaseInformation {
   /**
@@ -53,8 +73,8 @@ export interface BaseInformation {
    * The field which is extracted
    */
   field_name: string;
-  /** Approved */
-  approved?: boolean | null;
+  /** @default "pending" */
+  status?: BaseInformationStatus;
   /** Note */
   note?: string | null;
   /** Fulfillable */
@@ -99,6 +119,33 @@ export interface JobResponse {
   message: string;
   /** Status */
   status: string;
+}
+
+/** Requirement */
+export interface Requirement {
+  /**
+   * Id
+   * @format uuid
+   */
+  id: string;
+  /** Name */
+  name: string;
+  /** Source */
+  source: string;
+  /** Category */
+  category: string;
+  type: RequirementType;
+  /** File */
+  file: string;
+  /** @default "pending" */
+  status?: RequirementStatus;
+  /** Note */
+  note?: string | null;
+  /**
+   * Tender Id
+   * @format uuid
+   */
+  tender_id: string;
 }
 
 /** StepStatus */
@@ -571,6 +618,31 @@ export class Api<
         format: "json",
         ...params,
       }),
+
+    /**
+     * No description
+     *
+     * @tags tenders
+     * @name UpdateTenderBaseInformationStatus
+     * @summary Update Tender Base Information Status
+     * @request PUT:/tenders/{tender_id}/base_information_status
+     */
+    updateTenderBaseInformationStatus: (
+      tenderId: string,
+      query: {
+        /** Field Name */
+        field_name: string;
+        base_information_status: BaseInformationStatus;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<any, void | HTTPValidationError>({
+        path: `/tenders/${tenderId}/base_information_status`,
+        method: "PUT",
+        query: query,
+        format: "json",
+        ...params,
+      }),
   };
   jobs = {
     /**
@@ -630,6 +702,46 @@ export class Api<
       this.request<JobResponse, void | HTTPValidationError>({
         path: `/jobs/${jobId}/cancel`,
         method: "POST",
+        format: "json",
+        ...params,
+      }),
+  };
+  requirements = {
+    /**
+     * No description
+     *
+     * @tags requirements
+     * @name GetRequirementsForTender
+     * @summary Get Requirements For Tender
+     * @request GET:/requirements/{tender_id}
+     */
+    getRequirementsForTender: (tenderId: string, params: RequestParams = {}) =>
+      this.request<Requirement[], void | HTTPValidationError>({
+        path: `/requirements/${tenderId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags requirements
+     * @name UpdateRequirementStatus
+     * @summary Update Requirement Status
+     * @request PUT:/requirements/{requirement_id}/status
+     */
+    updateRequirementStatus: (
+      requirementId: string,
+      query: {
+        requirement_status: RequirementStatus;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<any, void | HTTPValidationError>({
+        path: `/requirements/${requirementId}/status`,
+        method: "PUT",
+        query: query,
         format: "json",
         ...params,
       }),

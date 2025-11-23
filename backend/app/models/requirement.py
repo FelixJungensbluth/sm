@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 import uuid
 from pydantic.main import BaseModel
 
@@ -11,10 +12,11 @@ class RequirementType(str, Enum):
     SONSTIGES = "Sonstiges"
 
 class RequirementStatus(str, Enum):
-    NOT_SET = "Nicht gesetzt"
-    NOT_FULFILLED = "Nicht erfüllt"
-    PARTIALLY_FULFILLED = "Teilweise erfüllt"
-    FULFILLED = "Erfüllt"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    DELETED = "deleted"
+    DUPLICATE = "duplicate"
 
 class Requirement(BaseModel):
     id: uuid.UUID
@@ -23,8 +25,6 @@ class Requirement(BaseModel):
     category: str
     type: RequirementType
     file: str
-    status: RequirementStatus = RequirementStatus.NOT_SET
-    note: str | None = None
+    status: RequirementStatus = RequirementStatus.PENDING
+    note: Optional[str] = None
     tender_id: uuid.UUID
-    deleted: bool = False
-    duplicate: bool | None = None

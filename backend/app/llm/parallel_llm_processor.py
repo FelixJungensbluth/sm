@@ -198,7 +198,6 @@ async def process_api_requests(
                     await asyncio.gather(*in_flight_tasks)
                 break
 
-            # Cool down globally if rate limit recently hit
             if status_tracker.last_rate_limit_error_time:
                 time_since_last_rl = time.time() - status_tracker.last_rate_limit_error_time
                 if time_since_last_rl < base_cooldown_seconds:

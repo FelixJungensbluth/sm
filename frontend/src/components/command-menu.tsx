@@ -158,7 +158,7 @@ export function CommandMenu({
                   type="button"
                   onClick={command.action}
                   className={cn(
-                    'w-full flex items-center gap-2 px-3 py-2 text-sm rounded-sm transition-colors',
+                    'w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors',
                     'hover:bg-accent hover:text-accent-foreground',
                     'focus:bg-accent focus:text-accent-foreground outline-none',
                     index === selectedIndex && 'bg-accent text-accent-foreground'

@@ -7,7 +7,7 @@ import { useTenderById } from "@/hooks/use-tenders";
 import { useTenderDocuments } from "@/hooks/use-documents";
 import BaseInformationViewer from "@/components/base-information/base-information-viewer";
 import type { BaseInformation } from "@/services/api/api";
-import { FileTree } from "@/components/tenders/FileTree";
+import { FileTree } from "@/components/file-tree/FileTree";
 import BaseInformationCard from "@/components/base-information/base-information-card";
 import ResizeHandler from "@/components/panels/resize-handler";
 
@@ -49,15 +49,12 @@ export function TenderView() {
           <h1 className="text-lg font-semibold">{tender.title}</h1>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsFileTreeOpen(!isFileTreeOpen)}
-          className="h-8 w-8"
-          aria-label="Toggle file tree"
-        >
-          <FolderTree className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2 px-6">
+          <FolderTree
+            className="h-4 w-4"
+            onClick={() => setIsFileTreeOpen(!isFileTreeOpen)}
+          />
+        </div>
       </div>
 
       {/* Main Content */}
@@ -82,17 +79,24 @@ export function TenderView() {
                           bi.value === currentBaseInfo.value
                       )
                     : -1;
-                  return tender.base_information.map((info, index) => (
-                    <BaseInformationCard
-                      key={index}
-                      baseInformation={info}
-                      index={index}
-                      onSelect={(index) =>
-                        setCurrentBaseInfo(tender.base_information[index])
-                      }
-                      isSelected={selectedIndex === index}
-                    />
-                  ));
+                  return tender.base_information.map((info, index) => {
+                    if (info.field_name === "compact_description") {
+                      return null;
+                    }
+
+                    return (
+                      <BaseInformationCard
+                        key={index}
+                        baseInformation={info}
+                        index={index}
+                        onSelect={(index) =>
+                          setCurrentBaseInfo(tender.base_information[index])
+                        }
+                        isSelected={selectedIndex === index}
+                        tenderId={tender.id}
+                      />
+                    );
+                  });
                 })()}
               </div>
             </div>
@@ -108,7 +112,7 @@ export function TenderView() {
           minSize={50}
           className="min-w-0 min-h-0 overflow-hidden"
         >
-          <div className="h-full overflow-y-auto bg-background">
+          <div className="h-full overflow-hidden bg-background">
             {(() => {
               if (!selectedFileId || documents.length === 0) {
                 return (

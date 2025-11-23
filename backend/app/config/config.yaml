@@ -31,3 +31,7 @@ llm:
         gpt-oss:
           rpm: 100.0
           tpm: 100000.0
+
+embedding:
+  provider: "ollama" # ollama or sentence_transformer
+  default_model: "embeddinggemma" # all-MiniLM-L6-v2 or embeddinggemma

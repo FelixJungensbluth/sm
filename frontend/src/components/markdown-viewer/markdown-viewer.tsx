@@ -1,11 +1,18 @@
-import { ChevronDown, ChevronUp, Minus, Plus, Search, X } from 'lucide-react';
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import Mark from 'advanced-mark.js';
-import { Input } from '@/components/ui/input.tsx';
-import { Button } from '@/components/ui/button.tsx';
-import type { Document } from '@/services/api/api.ts';
+import { ChevronDown, ChevronUp, Minus, Plus, Search, X } from "lucide-react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import Mark from "advanced-mark.js";
+import { Input } from "@/components/ui/input.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import type { Document } from "@/services/api/api.ts";
 
 interface MarkdownViewerProps {
   document: Document;
@@ -13,13 +20,19 @@ interface MarkdownViewerProps {
   onComplete?: () => void;
 }
 
-export default function MarkdownViewer({ document, markdownRef, onComplete }: MarkdownViewerProps) {
-  const [content, setContent] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+export default function MarkdownViewer({
+  document,
+  markdownRef,
+  onComplete,
+}: MarkdownViewerProps) {
+  const [content, setContent] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
+    "idle"
+  );
   const [err, setErr] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(12);
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [matches, setMatches] = useState<HTMLElement[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSearch, setShowSearch] = useState(false);
@@ -27,15 +40,16 @@ export default function MarkdownViewer({ document, markdownRef, onComplete }: Ma
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fileUrl = useMemo(
-    () => `${import.meta.env.VITE_MINIO_BASE_URL}/tender-files/${document.tender_id}/processed/${document.id}`,
+    () =>
+      `${import.meta.env.VITE_MINIO_BASE_URL}/tender-files/${document.tender_id}/processed/${document.id}`,
     [document.tender_id, document.id]
   );
 
   console.log(fileUrl);
 
   const load = useCallback(async () => {
-    setStatus('loading');
-    setContent('');
+    setStatus("loading");
+    setContent("");
     setErr(null);
     try {
       const res = await fetch(fileUrl);
@@ -43,40 +57,39 @@ export default function MarkdownViewer({ document, markdownRef, onComplete }: Ma
         throw new Error(`Failed to load: ${res.status} ${res.statusText}`);
       }
       let txt = await res.text();
-      txt = txt.replace(/- /g, '-'); // Handle word wraps
+      txt = txt.replace(/- /g, "-"); // Handle word wraps
 
       setContent(txt);
-      setStatus('ready');
+      setStatus("ready");
       setErr(null);
     } catch (e) {
-      setStatus('error');
-      setErr(e instanceof Error ? e.message : 'Failed to load markdown');
+      setStatus("error");
+      setErr(e instanceof Error ? e.message : "Failed to load markdown");
     }
   }, [fileUrl]);
 
   useEffect(() => {
-    setStatus('idle');
+    setStatus("idle");
     void load();
   }, [load]);
 
   useEffect(() => {
-    if (status === 'ready') {
+    if (status === "ready") {
       onComplete?.();
     }
   }, [status, onComplete]);
 
   useEffect(() => {
-    if (status !== 'ready' || !markdownRef.current) return;
+    if (status !== "ready" || !markdownRef.current) return;
     markRef.current = new Mark(markdownRef.current);
   }, [status, markdownRef]);
-
 
   useEffect(() => {
     if (!markRef.current) return;
     clearTimeout(debounceRef.current!);
     debounceRef.current = setTimeout(() => {
       markRef.current?.unmark({
-        className: 'highlight-search',
+        className: "highlight-search",
         done: () => {
           if (!searchTerm) {
             setMatches([]);
@@ -85,17 +98,19 @@ export default function MarkdownViewer({ document, markdownRef, onComplete }: Ma
           }
           markRef.current?.mark(searchTerm, {
             separateWordSearch: false,
-            className: 'highlight-search',
-            ignorePunctuation: ' :;.,-–—‒_(){}[]!\'"+='.split(''),
+            className: "highlight-search",
+            ignorePunctuation: " :;.,-–—‒_(){}[]!'\"+=".split(""),
             acrossElements: true,
             done: () => {
-              const elements = markdownRef.current?.querySelectorAll('.highlight-search') || [];
+              const elements =
+                markdownRef.current?.querySelectorAll(".highlight-search") ||
+                [];
               const arr = Array.from(elements) as HTMLElement[];
               setMatches(arr);
               setCurrentIndex(arr.length ? 0 : -1);
-            }
+            },
           });
-        }
+        },
       });
     }, 300);
     return () => clearTimeout(debounceRef.current!);
@@ -103,7 +118,7 @@ export default function MarkdownViewer({ document, markdownRef, onComplete }: Ma
 
   useEffect(() => {
     if (matches[currentIndex]) {
-      matches[currentIndex].scrollIntoView({ block: 'center' });
+      matches[currentIndex].scrollIntoView({ block: "center" });
     }
   }, [currentIndex, matches]);
 
@@ -113,10 +128,10 @@ export default function MarkdownViewer({ document, markdownRef, onComplete }: Ma
   const toggleSearch = useCallback(() => {
     setShowSearch((prev) => {
       if (prev) {
-        setSearchTerm('');
+        setSearchTerm("");
         setMatches([]);
         setCurrentIndex(0);
-        markRef.current?.unmark({ className: 'highlight-search' });
+        markRef.current?.unmark({ className: "highlight-search" });
       }
       return !prev;
     });
@@ -131,17 +146,17 @@ export default function MarkdownViewer({ document, markdownRef, onComplete }: Ma
     setCurrentIndex((idx) => (idx - 1 + matches.length) % matches.length);
   }, [matches]);
 
-  if (status === 'loading' || status === 'idle') {
+  if (status === "loading" || status === "idle") {
     return (
-      <div className="relative w-full h-full border border-border rounded-md bg-background flex items-center justify-center">
+      <div className="relative w-full h-full border border-border bg-background flex items-center justify-center">
         <div className="text-muted-foreground">Loading markdown…</div>
       </div>
     );
   }
 
-  if (status === 'error') {
+  if (status === "error") {
     return (
-      <div className="relative w-full h-full border border-border rounded-md bg-background flex items-center justify-center">
+      <div className="relative w-full h-full border border-border bg-background flex items-center justify-center">
         <div className="text-destructive">Error: {err}</div>
       </div>
     );
@@ -150,7 +165,10 @@ export default function MarkdownViewer({ document, markdownRef, onComplete }: Ma
   return (
     <div className="flex flex-col w-full h-full bg-background overflow-hidden">
       <div className="h-14 border-b border-border bg-background flex items-center justify-between">
-        <span className="px-4 truncate text-sm font-medium text-foreground" title={document.name}>
+        <span
+          className="px-4 truncate text-sm font-medium text-foreground"
+          title={document.name}
+        >
           {document.name}
         </span>
 
@@ -173,7 +191,9 @@ export default function MarkdownViewer({ document, markdownRef, onComplete }: Ma
           >
             <Minus size={16} />
           </Button>
-          <span className="w-8 text-center text-xs tabular-nums text-muted-foreground">{fontSize}px</span>
+          <span className="w-8 text-center text-xs tabular-nums text-muted-foreground">
+            {fontSize}px
+          </span>
           <Button
             variant="ghost"
             size="icon"
@@ -196,7 +216,10 @@ export default function MarkdownViewer({ document, markdownRef, onComplete }: Ma
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+              size={16}
+            />
             <Button
               variant="ghost"
               size="icon"
@@ -229,13 +252,17 @@ export default function MarkdownViewer({ document, markdownRef, onComplete }: Ma
               <ChevronDown size={16} />
             </Button>
             <span className="text-xs tabular-nums text-muted-foreground min-w-[3rem] text-right">
-              {matches.length ? `${currentIndex + 1}/${matches.length}` : '0/0'}
+              {matches.length ? `${currentIndex + 1}/${matches.length}` : "0/0"}
             </span>
           </div>
         </div>
       )}
 
-      <div ref={markdownRef} className="px-4 w-full h-full overflow-auto markdown-content" style={{ fontSize }}>
+      <div
+        ref={markdownRef}
+        className="px-4 w-full flex-1 overflow-auto markdown-content"
+        style={{ fontSize }}
+      >
         <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
       </div>
     </div>

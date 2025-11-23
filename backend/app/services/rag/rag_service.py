@@ -1,3 +1,4 @@
+from app.embedding.provider.base_embedding import BaseEmbedding
 from typing import List, Optional
 import uuid
 from attr import dataclass, asdict
@@ -6,7 +7,6 @@ from app.config.settings import SettingsDep
 from app.services.rag.reranker.rank_llm import RankLlm
 from app.services.rag.splitter.recursiv_splitter import RecursiveSplitter
 from app.models.document import ProcessedDocument
-from langchain_ollama import OllamaEmbeddings
 
 from app.config.logger import logger
 
@@ -19,7 +19,7 @@ class Chunk:
 
 
 class RagService:
-    def __init__(self, settings: SettingsDep):
+    def __init__(self, settings: SettingsDep, embedding_provider: BaseEmbedding):
         self.settings = settings
         self.splitter = RecursiveSplitter(chunk_size=1500, chunk_overlap=300)
         self.client = AsyncQdrantClient(
@@ -28,7 +28,7 @@ class RagService:
 
         # self.splitter = SemanticSplitter(self._embeddings)
         self.reranker: Optional[RankLlm] = None
-        self.embeddings = OllamaEmbeddings(model="embeddinggemma")
+        self.embedding_provider = embedding_provider
 
     async def create_collection(self, collection_name: str):
         if not await self.client.collection_exists(collection_name):
@@ -56,7 +56,7 @@ class RagService:
                 points=[
                     models.PointStruct(
                         id=i,
-                        vector=self.embeddings.embed_query(chunk.page_content),
+                        vector=await self.embedding_provider.embed_query(chunk.page_content),
                         payload=asdict(
                             Chunk(
                                 content=chunk.page_content,
@@ -76,7 +76,7 @@ class RagService:
             raise e
 
     async def retrieve_chunks(self, tender_id: uuid.UUID, query: str, top_k: int = 10):
-        query_vector = self.embeddings.embed_query(query)
+        query_vector = await self.embedding_provider.embed_query(query)
         res = await self.client.search(
             collection_name=str(tender_id),
             query_vector=query_vector,

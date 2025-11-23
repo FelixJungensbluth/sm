@@ -1,3 +1,4 @@
+from app.models.base_information import BaseInformationStatus
 from app.repos.shared import get_jobs_repo
 from app.repos.jobs_repo import JobsRepo
 from typing import Annotated, List, Optional
@@ -125,3 +126,13 @@ async def get_tender_documents(
     document_repo: DocumentRepo = Depends(get_document_repo),
 ) -> List[Document]:
     return document_repo.get_documents_by_tender_id(tender_id)
+
+
+@router.put("/{tender_id}/base_information_status", status_code=200, operation_id="update_tender_base_information_status")
+async def update_tender_base_information_status(
+    tender_id: uuid.UUID,
+    field_name: str,
+    base_information_status: BaseInformationStatus,
+    tender_repo: TenderRepo = Depends(get_tender_repo),
+):
+    return tender_repo.update_tender_base_information_status(tender_id, field_name, base_information_status)
