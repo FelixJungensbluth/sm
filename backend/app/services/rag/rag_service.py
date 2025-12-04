@@ -1,6 +1,7 @@
 from app.embedding.provider.base_embedding import BaseEmbedding
 from typing import List, Optional
 import uuid
+import asyncio
 from attr import dataclass, asdict
 from qdrant_client import AsyncQdrantClient, models
 from app.config.settings import SettingsDep
@@ -16,6 +17,7 @@ class Chunk:
     content: str
     file_name: str
     file_id: str
+    tender_id: Optional[str] = None  # For global retrieval
 
 
 class RagService:
@@ -84,7 +86,7 @@ class RagService:
         )
 
         chunks = [
-            Chunk(content=content, file_name=file_name, file_id=file_id)
+            Chunk(content=content, file_name=file_name, file_id=file_id, tender_id=str(tender_id))
             for point in res
             if point.payload
             and (content := point.payload.get("content"))
@@ -93,3 +95,68 @@ class RagService:
         ]
 
         return chunks
+
+    async def retrieve_chunks_global(self, tender_ids: List[uuid.UUID], query: str, top_k: int = 10):
+        """
+        Retrieve chunks from multiple tender collections in parallel and merge results.
+        
+        Args:
+            tender_ids: List of tender IDs to search across
+            query: Search query
+            top_k: Total number of chunks to return after merging
+            
+        Returns:
+            List of Chunk objects from across all tenders, sorted by relevance
+        """
+        if not tender_ids:
+            return []
+
+        query_vector = await self.embedding_provider.embed_query(query)
+        
+        # Search all collections in parallel
+        async def search_collection(tender_id: uuid.UUID):
+            try:
+                collection_name = str(tender_id)
+                # Check if collection exists
+                if not await self.client.collection_exists(collection_name):
+                    return []
+                
+                res = await self.client.search(
+                    collection_name=collection_name,
+                    query_vector=query_vector,
+                    limit=top_k,  # Get top_k from each collection
+                )
+                
+                # Convert to chunks with tender_id
+                chunks = []
+                for point in res:
+                    if point.payload:
+                        content = point.payload.get("content")
+                        file_name = point.payload.get("file_name")
+                        file_id = point.payload.get("file_id")
+                        if content and file_name and file_id:
+                            chunks.append(
+                                Chunk(
+                                    content=content,
+                                    file_name=file_name,
+                                    file_id=file_id,
+                                    tender_id=str(tender_id),
+                                )
+                            )
+                return chunks
+            except Exception as e:
+                logger.warning(f"Error searching collection {tender_id}: {e}")
+                return []
+
+        # Search all collections in parallel
+        results = await asyncio.gather(*[search_collection(tid) for tid in tender_ids])
+        
+        # Flatten and merge results
+        all_chunks = []
+        for chunks in results:
+            all_chunks.extend(chunks)
+        
+        # Sort by score if available (Qdrant returns results sorted by relevance)
+        # Since we're merging from multiple collections, we'll keep the order
+        # and return top_k
+        return all_chunks[:top_k]

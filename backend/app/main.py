@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes.tenders import router as tenders_router
 from app.routes.jobs import router as jobs_router
 from app.routes.requirements import router as requirements_router
+from app.routes.chat import router as chat_router
 
 app = FastAPI()
 
@@ -21,3 +22,4 @@ app.add_middleware(
 app.include_router(tenders_router)
 app.include_router(jobs_router)
 app.include_router(requirements_router)
+app.include_router(chat_router)

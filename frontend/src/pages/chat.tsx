@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   DropdownMenu,
@@ -16,42 +15,55 @@ import {
   Send,
   Trash2,
   Plus,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useChatConversations,
-  createConversation,
-  addMessageToConversation,
-  updateConversationTitle,
-  deleteConversation,
-  updateConversations,
+  useCreateConversation,
+  useUpdateConversationTitle,
+  useDeleteConversation,
+  useConversation,
 } from '@/hooks/useChatConversations';
-import type { ChatConversation, ChatContext } from '@/lib/chat-types';
-
-// Available contexts - can be extended later
-const AVAILABLE_CONTEXTS: ChatContext[] = [
-  { id: 'none', name: 'No Context' },
-  { id: 'project', name: 'Project Context' },
-  { id: 'document', name: 'Document Context' },
-  { id: 'codebase', name: 'Codebase Context' },
-];
+import { useChatStream } from '@/hooks/useChatStream';
+import { useTenders } from '@/hooks/use-tenders';
+import type { ChatContext } from '@/lib/chat-types';
 
 export function Chat() {
-  const { conversations, conversationsById } = useChatConversations();
+  const { conversations, isLoading: conversationsLoading } = useChatConversations();
+  const { data: tenders = [] } = useTenders();
+  const createConversation = useCreateConversation();
+  const updateTitle = useUpdateConversationTitle();
+  const deleteConversation = useDeleteConversation();
+  const { streamMessage, cancel } = useChatStream();
+
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
-  const [selectedContext, setSelectedContext] = useState<ChatContext>(AVAILABLE_CONTEXTS[0]);
+  const [selectedContext, setSelectedContext] = useState<ChatContext>({ id: 'none', name: 'No Context' });
+  const [streamingContent, setStreamingContent] = useState<string>('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const selectedConversation = selectedConversationId
-    ? conversationsById[selectedConversationId]
-    : null;
+  const { data: selectedConversation, refetch: refetchConversation } = useConversation(selectedConversationId);
+  const lastStreamedConvId = useRef<string | null>(null);
 
-  // Auto-scroll to bottom when messages change
+  // Build available contexts
+  const availableContexts: ChatContext[] = [
+    { id: 'none', name: 'No Context' },
+    { id: 'global', name: 'All Tenders' },
+    ...tenders.map((t) => ({
+      id: 'tender',
+      name: t.title,
+      tender_id: t.id,
+    })),
+  ];
+
+  // Auto-scroll to bottom when messages change or streaming
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedConversation?.messages]);
+  }, [selectedConversation?.messages, streamingContent, pendingUserMessage]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -61,62 +73,100 @@ export function Chat() {
     }
   }, [inputValue]);
 
-  const handleNewConversation = useCallback(() => {
-    const newConv = createConversation('New Conversation', selectedContext.id);
-    updateConversations((convs) => ({
-      ...convs,
-      [newConv.id]: newConv,
-    }));
-    setSelectedConversationId(newConv.id);
-    setInputValue('');
-  }, [selectedContext]);
+  const handleNewConversation = useCallback(async () => {
+    try {
+      const result = await createConversation.mutateAsync({
+        title: 'New Conversation',
+        tenderId: selectedContext.tender_id || null,
+        contextType: selectedContext.id,
+      });
+      setSelectedConversationId(result.id);
+      setInputValue('');
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+    }
+  }, [selectedContext, createConversation]);
 
-  const handleSendMessage = useCallback(() => {
-    if (!inputValue.trim()) return;
+  const handleSendMessage = useCallback(async () => {
+    if (!inputValue.trim() || isStreaming) return;
+
+    const messageContent = inputValue.trim();
+    setInputValue('');
+    setPendingUserMessage(messageContent); // Show user message immediately
+    setIsStreaming(true);
+    setStreamingContent('');
 
     let convId = selectedConversationId;
-    
-    // Create new conversation if none selected
-    if (!convId) {
-      const newConv = createConversation(
-        inputValue.slice(0, 50) || 'New Conversation',
-        selectedContext.id
+
+    try {
+      // Create new conversation if none selected
+      if (!convId) {
+        const result = await createConversation.mutateAsync({
+          title: messageContent.slice(0, 50) || 'New Conversation',
+          tenderId: selectedContext.tender_id || null,
+          contextType: selectedContext.id,
+        });
+        convId = result.id;
+        setSelectedConversationId(convId);
+      }
+
+      // Determine context type
+      let contextType = selectedContext.id;
+      if (selectedContext.id === 'tender' && selectedContext.tender_id) {
+        contextType = 'tender';
+      }
+
+      // Stream the response
+      await streamMessage(
+        messageContent,
+        convId,
+        selectedContext.tender_id || null,
+        contextType,
+        (token) => {
+          setStreamingContent((prev) => prev + token);
+        },
+        (completedConvId) => {
+          setIsStreaming(false);
+          setStreamingContent('');
+          setPendingUserMessage(null); // Clear pending message
+          setSelectedConversationId(completedConvId);
+          // Only refetch once after streaming completes to get the saved messages
+          if (lastStreamedConvId.current !== completedConvId) {
+            lastStreamedConvId.current = completedConvId;
+            // Use setTimeout to debounce and avoid immediate refetch loops
+            setTimeout(() => {
+              refetchConversation();
+            }, 500);
+          }
+        },
+        (error) => {
+          setIsStreaming(false);
+          setStreamingContent('');
+          setPendingUserMessage(null); // Clear pending message on error
+          console.error('Streaming error:', error);
+        }
       );
-      updateConversations((convs) => ({
-        ...convs,
-        [newConv.id]: newConv,
-      }));
-      convId = newConv.id;
-      setSelectedConversationId(convId);
+    } catch (error) {
+      setIsStreaming(false);
+      setStreamingContent('');
+      setPendingUserMessage(null); // Clear pending message on error
+      console.error('Failed to send message:', error);
     }
-
-    // Add user message
-    addMessageToConversation(convId, {
-      role: 'user',
-      content: inputValue,
-    });
-
-    // TODO: Send to backend API and get response
-    // For now, add a placeholder assistant response
-    setTimeout(() => {
-      addMessageToConversation(convId!, {
-        role: 'assistant',
-        content: 'This is a placeholder response. Connect to your backend API to get real responses.',
-      });
-    }, 500);
-
-    setInputValue('');
-  }, [inputValue, selectedConversationId, selectedContext]);
+  }, [inputValue, selectedConversationId, selectedContext, isStreaming, createConversation, streamMessage]);
 
   const handleDeleteConversation = useCallback(
-    (e: React.MouseEvent, conversationId: string) => {
+    async (e: React.MouseEvent, conversationId: string) => {
       e.stopPropagation();
-      deleteConversation(conversationId);
-      if (selectedConversationId === conversationId) {
-        setSelectedConversationId(null);
+      try {
+        await deleteConversation.mutateAsync(conversationId);
+        if (selectedConversationId === conversationId) {
+          setSelectedConversationId(null);
+        }
+      } catch (error) {
+        console.error('Failed to delete conversation:', error);
       }
     },
-    [selectedConversationId]
+    [selectedConversationId, deleteConversation]
   );
 
   const handleKeyDown = useCallback(
@@ -130,15 +180,32 @@ export function Chat() {
   );
 
   // Update conversation title from first message if it's still "New Conversation"
+  const titleUpdateRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (selectedConversation && selectedConversation.title === 'New Conversation') {
-      const firstUserMessage = selectedConversation.messages.find((m) => m.role === 'user');
-      if (firstUserMessage) {
-        const newTitle = firstUserMessage.content.slice(0, 50);
-        updateConversationTitle(selectedConversation.id, newTitle);
+      // Only update if we haven't already tried to update this conversation
+      if (!titleUpdateRef.current.has(selectedConversation.id)) {
+        const firstUserMessage = selectedConversation.messages.find((m) => m.role === 'user');
+        if (firstUserMessage && firstUserMessage.content.trim()) {
+          const newTitle = firstUserMessage.content.slice(0, 50);
+          titleUpdateRef.current.add(selectedConversation.id);
+          updateTitle.mutate({
+            conversationId: selectedConversation.id,
+            title: newTitle,
+          });
+        }
       }
     }
-  }, [selectedConversation]);
+  }, [selectedConversation?.id, selectedConversation?.title, selectedConversation?.messages.length, updateTitle]);
+
+  // Cleanup streaming on unmount
+  useEffect(() => {
+    return () => {
+      cancel();
+    };
+  }, [cancel]);
+
+  const displayMessages = selectedConversation?.messages || [];
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -159,12 +226,18 @@ export function Chat() {
                 size="icon"
                 onClick={handleNewConversation}
                 aria-label="New conversation"
+                disabled={createConversation.isPending}
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {conversations.length === 0 ? (
+              {conversationsLoading ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  <Loader2 className="h-8 w-8 mx-auto mb-2 opacity-50 animate-spin" />
+                  <p>Loading conversations...</p>
+                </div>
+              ) : conversations.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
                   <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p>No conversations yet</p>
@@ -172,17 +245,17 @@ export function Chat() {
                 </div>
               ) : (
                 <div className="p-2">
-                  {conversations.map((conv) => (
-                    <div
-                      key={conv.id}
-                      onClick={() => setSelectedConversationId(conv.id)}
-                      className={cn(
-                        'group relative p-3 cursor-pointer transition-colors mb-1',
-                        selectedConversationId === conv.id
-                          ? 'bg-accent'
-                          : 'hover:bg-accent/50'
-                      )}
-                    >
+                  {conversations.map((conv, index) => (
+                    <div key={conv.id}>
+                      <div
+                        onClick={() => setSelectedConversationId(conv.id)}
+                        className={cn(
+                          'group relative p-3 cursor-pointer transition-colors',
+                          selectedConversationId === conv.id
+                            ? 'bg-accent'
+                            : 'hover:bg-accent/50'
+                        )}
+                      >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{conv.title}</p>
@@ -201,10 +274,15 @@ export function Chat() {
                           className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(e) => handleDeleteConversation(e, conv.id)}
                           aria-label="Delete conversation"
+                          disabled={deleteConversation.isPending}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
+                      </div>
+                      {index < conversations.length - 1 && (
+                        <div className="border-b border-border mx-2" />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -213,27 +291,7 @@ export function Chat() {
           </div>
         </Panel>
 
-        <PanelResizeHandle
-          id="handle-conversations-chat"
-          className={cn(
-            'relative z-30 bg-border cursor-col-resize group touch-none',
-            'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
-            'focus-visible:ring-offset-1 focus-visible:ring-offset-background',
-            'transition-all w-1'
-          )}
-          aria-label="Resize panels"
-          role="separator"
-          aria-orientation="vertical"
-        >
-          <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
-          <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
-            <span className="w-1 h-1 bg-muted-foreground" />
-            <span className="w-1 h-1 bg-muted-foreground" />
-            <span className="w-1 h-1 bg-muted-foreground" />
-          </div>
-        </PanelResizeHandle>
-
-        {/* Main Chat Area */}
+        <PanelResizeHandle/>
         <Panel
           id="chat-main"
           defaultSize={75}
@@ -243,8 +301,8 @@ export function Chat() {
           {selectedConversation ? (
             <>
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {selectedConversation.messages.map((message) => (
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                {displayMessages.map((message) => (
                   <div
                     key={message.id}
                     className={cn(
@@ -254,19 +312,51 @@ export function Chat() {
                   >
                     <div
                       className={cn(
-                        'max-w-[80%] px-4 py-2',
+                        'max-w-[80%] px-5 py-3 border',
                         message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
+                          ? 'bg-primary/90 text-primary-foreground border-primary/30'
+                          : 'bg-gray-200 border-border'
                       )}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                      <p className="text-xs opacity-70 mt-1">
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                      <p className={cn(
+                        'text-xs mt-2',
+                        message.role === 'user' ? 'opacity-80' : 'opacity-70'
+                      )}>
                         {new Date(message.timestamp).toLocaleTimeString()}
                       </p>
                     </div>
                   </div>
                 ))}
+                {/* Pending user message (shown immediately) */}
+                {pendingUserMessage && (
+                  <div className="flex gap-3 justify-end">
+                    <div className="max-w-[80%] px-5 py-3 border bg-primary/90 text-primary-foreground border-primary/30">
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{pendingUserMessage}</p>
+                      <p className="text-xs mt-2 opacity-80">
+                        {new Date().toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {/* Loading indicator or streaming message */}
+                {isStreaming && (
+                  <div className="flex gap-3 justify-start">
+                    <div className="max-w-[80%] px-5 py-3 bg-gray-200 border border-border">
+                      {streamingContent ? (
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                          {streamingContent}
+                          <span className="animate-pulse">▋</span>
+                        </p>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin opacity-70" />
+                          <p className="text-sm text-muted-foreground">Thinking...</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
@@ -279,12 +369,12 @@ export function Chat() {
                         Context: {selectedContext.name}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
+                    <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
                       <DropdownMenuLabel>Select Context</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      {AVAILABLE_CONTEXTS.map((context) => (
+                      {availableContexts.map((context) => (
                         <DropdownMenuItem
-                          key={context.id}
+                          key={context.tender_id || context.id}
                           onClick={() => setSelectedContext(context)}
                         >
                           {context.name}
@@ -302,15 +392,20 @@ export function Chat() {
                     placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
                     className="min-h-[60px] max-h-[200px] resize-none"
                     rows={1}
+                    disabled={isStreaming}
                   />
                   <Button
                     onClick={handleSendMessage}
-                    disabled={!inputValue.trim()}
+                    disabled={!inputValue.trim() || isStreaming}
                     size="icon"
                     className="self-end"
                     aria-label="Send message"
                   >
-                    <Send className="h-4 w-4" />
+                    {isStreaming ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -324,7 +419,7 @@ export function Chat() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Select a conversation from the sidebar or create a new one to begin chatting.
                   </p>
-                  <Button onClick={handleNewConversation}>
+                  <Button onClick={handleNewConversation} disabled={createConversation.isPending}>
                     <Plus className="h-4 w-4 mr-2" />
                     New Conversation
                   </Button>
@@ -337,4 +432,3 @@ export function Chat() {
     </div>
   );
 }
-

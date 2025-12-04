@@ -1,9 +1,12 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, AsyncGenerator
+import aiohttp
+import json
 
 from app.config.settings import SettingsDep
 from app.llm.parallel_llm_processor import RequestProcessor
 from app.llm.provider.base_llm import BaseLLM, LlmRequest
 from app.llm.utils import extract_json_from_content
+from app.config.logger import logger
 
 
 # Default model configs - can be overridden in config.yaml
@@ -67,3 +70,68 @@ class OpenAi(BaseLLM):
             return extract_json_from_content(content)
         
         return content
+
+    async def stream_response(
+        self, llm_requests: List[LlmRequest]
+    ) -> AsyncGenerator[str, None]:
+        """Stream response from OpenAI API."""
+        messages = [{"role": r.role, "content": r.message} for r in llm_requests]
+        
+        request_data = {
+            "model": self._model_name,
+            "messages": messages,
+            "stream": True,
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self._settings.OPENAI_API_KEY}",
+        }
+
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(
+                    self._api_url,
+                    json=request_data,
+                    headers=headers,
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"OpenAI API error {response.status}: {error_text}")
+                        yield f"[Error: {error_text}]"
+                        return
+
+                    async for line in response.content:
+                        if not line:
+                            continue
+                        
+                        try:
+                            line_text = line.decode("utf-8").strip()
+                            if not line_text or not line_text.startswith("data: "):
+                                continue
+                            
+                            # Remove "data: " prefix
+                            data_str = line_text[6:]
+                            
+                            # Check for [DONE] marker
+                            if data_str == "[DONE]":
+                                break
+                            
+                            # Parse JSON
+                            data = json.loads(data_str)
+                            
+                            # Extract content from choices
+                            choices = data.get("choices", [])
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                content = delta.get("content", "")
+                                if content:
+                                    yield content
+                        except json.JSONDecodeError:
+                            continue
+                        except Exception as e:
+                            logger.warning(f"Error parsing OpenAI stream line: {e}")
+                            continue
+            except Exception as e:
+                logger.error(f"Error streaming from OpenAI: {e}")
+                yield f"[Error: {str(e)}]"

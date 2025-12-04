@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, AsyncGenerator
 
 from attr import dataclass
 
@@ -67,6 +67,21 @@ class BaseLLM(ABC):
 
         Returns:
             The output from the response.
+        """
+        pass
+
+    @abstractmethod
+    async def stream_response(
+        self, llm_requests: List[LlmRequest]
+    ) -> AsyncGenerator[str, None]:
+        """
+        Stream response tokens from the LLM.
+
+        Args:
+            llm_requests: List of LLM requests (conversation history + current message)
+
+        Yields:
+            Token strings as they are generated
         """
         pass
 

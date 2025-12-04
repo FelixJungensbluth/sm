@@ -1,4 +1,6 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, AsyncGenerator
+import aiohttp
+import json
 
 from app.config.settings import SettingsDep
 from app.llm.provider.base_llm import BaseLLM, LlmRequest
@@ -64,3 +66,58 @@ class Ollama(BaseLLM):
             return extract_json_from_content(content)
         
         return content
+
+    async def stream_response(
+        self, llm_requests: List[LlmRequest]
+    ) -> AsyncGenerator[str, None]:
+        """Stream response from Ollama API."""
+        messages = [{"role": r.role, "content": r.message} for r in llm_requests]
+        
+        request_data = {
+            "model": self._model_name,
+            "messages": messages,
+            "stream": True,
+        }
+
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(
+                    self._api_url,
+                    json=request_data,
+                    headers={"Content-Type": "application/json"},
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"Ollama API error {response.status}: {error_text}")
+                        yield f"[Error: {error_text}]"
+                        return
+
+                    async for line in response.content:
+                        if not line:
+                            continue
+                        
+                        try:
+                            line_text = line.decode("utf-8").strip()
+                            if not line_text:
+                                continue
+                            
+                            # Ollama streams JSON lines
+                            data = json.loads(line_text)
+                            
+                            # Check if this is the final message
+                            if data.get("done", False):
+                                break
+                            
+                            # Extract content from message
+                            message = data.get("message", {})
+                            content = message.get("content", "")
+                            if content:
+                                yield content
+                        except json.JSONDecodeError:
+                            continue
+                        except Exception as e:
+                            logger.warning(f"Error parsing Ollama stream line: {e}")
+                            continue
+            except Exception as e:
+                logger.error(f"Error streaming from Ollama: {e}")
+                yield f"[Error: {str(e)}]"

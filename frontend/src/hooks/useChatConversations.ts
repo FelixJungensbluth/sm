@@ -1,9 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ChatConversation, ChatMessage } from '@/lib/chat-types';
-
-type ConversationsState = {
-  conversations: Record<string, ChatConversation>;
-};
 
 interface UseChatConversationsResult {
   conversations: ChatConversation[];
@@ -11,145 +7,160 @@ interface UseChatConversationsResult {
   isLoading: boolean;
 }
 
-const STORAGE_KEY = 'chat-conversations';
-
-// Load conversations from localStorage
-const loadConversationsFromStorage = (): ConversationsState => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return { conversations: JSON.parse(stored) };
-    }
-  } catch (e) {
-    console.error('Failed to load conversations from storage:', e);
-  }
-  return { conversations: {} };
-};
-
-// Save conversations to localStorage
-const saveConversationsToStorage = (conversations: Record<string, ChatConversation>) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
-  } catch (e) {
-    console.error('Failed to save conversations to storage:', e);
-  }
-};
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 /**
- * Hook for managing chat conversations stored locally
+ * Hook for managing chat conversations from backend API
  */
 export const useChatConversations = (): UseChatConversationsResult => {
-  const [data, setData] = useState<ConversationsState>(() => {
-    return loadConversationsFromStorage();
-  });
-
-  // Listen for updates
-  useEffect(() => {
-    const handleUpdate = () => {
-      setData(() => {
-        const loaded = loadConversationsFromStorage();
-        return loaded;
+  const { data: conversations = [], isLoading } = useQuery({
+    queryKey: ['chat', 'conversations'],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/chat/conversations`, {
+        credentials: 'include',
       });
-    };
-
-    window.addEventListener('conversations-updated', handleUpdate);
-    return () => {
-      window.removeEventListener('conversations-updated', handleUpdate);
-    };
-  }, []);
-
-  const conversationsById = data?.conversations ?? {};
-  const conversations = Object.values(conversationsById).sort((a, b) => {
-    const aTime = new Date(a.updated_at).getTime();
-    const bTime = new Date(b.updated_at).getTime();
-    return bTime - aTime; // Most recent first
+      if (!response.ok) {
+        throw new Error('Failed to fetch conversations');
+      }
+      return response.json() as Promise<ChatConversation[]>;
+    },
+    staleTime: 30 * 1000, // 30 seconds
   });
-  const isLoading = false;
+
+  const conversationsById = conversations.reduce(
+    (acc, conv) => {
+      acc[conv.id] = conv;
+      return acc;
+    },
+    {} as Record<string, ChatConversation>
+  );
 
   return { conversations, conversationsById, isLoading };
 };
 
-// Export update function
-export const updateConversations = (
-  updater: (conversations: Record<string, ChatConversation>) => Record<string, ChatConversation>
-) => {
-  const current = loadConversationsFromStorage();
-  const updated = updater(current.conversations);
-  saveConversationsToStorage(updated);
-  // Dispatch event to notify listeners
-  window.dispatchEvent(new CustomEvent('conversations-updated'));
-};
-
 // Helper to create a new conversation
-export const createConversation = (
-  title: string,
-  context?: string
-): ChatConversation => {
-  const now = new Date().toISOString();
-  return {
-    id: `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    title,
-    messages: [],
-    context,
-    created_at: now,
-    updated_at: now,
-  };
-};
+export const useCreateConversation = () => {
+  const queryClient = useQueryClient();
 
-// Helper to add a message to a conversation
-export const addMessageToConversation = (
-  conversationId: string,
-  message: Omit<ChatMessage, 'id' | 'timestamp'>
-) => {
-  const now = new Date().toISOString();
-  const newMessage: ChatMessage = {
-    ...message,
-    id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    timestamp: now,
-  };
+  return useMutation({
+    mutationFn: async ({
+      title,
+      tenderId,
+      contextType,
+    }: {
+      title: string;
+      tenderId?: string | null;
+      contextType?: string;
+    }) => {
+      const params = new URLSearchParams({ title });
+      if (tenderId) params.append('tender_id', tenderId);
+      if (contextType) params.append('context_type', contextType);
 
-  updateConversations((conversations) => {
-    const conversation = conversations[conversationId];
-    if (!conversation) {
-      return conversations;
-    }
-
-    return {
-      ...conversations,
-      [conversationId]: {
-        ...conversation,
-        messages: [...conversation.messages, newMessage],
-        updated_at: now,
-      },
-    };
+      const response = await fetch(
+        `${API_BASE_URL}/chat/conversations?${params.toString()}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to create conversation');
+      }
+      return response.json() as Promise<ChatConversation>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] });
+    },
   });
 };
 
 // Helper to update conversation title
-export const updateConversationTitle = (conversationId: string, title: string) => {
-  updateConversations((conversations) => {
-    const conversation = conversations[conversationId];
-    if (!conversation) {
-      return conversations;
-    }
+export const useUpdateConversationTitle = () => {
+  const queryClient = useQueryClient();
 
-    return {
-      ...conversations,
-      [conversationId]: {
-        ...conversation,
-        title,
-        updated_at: new Date().toISOString(),
-      },
-    };
+  return useMutation({
+    mutationFn: async ({
+      conversationId,
+      title,
+    }: {
+      conversationId: string;
+      title: string;
+    }) => {
+      const response = await fetch(
+        `${API_BASE_URL}/chat/conversations/${conversationId}/title?title=${encodeURIComponent(title)}`,
+        {
+          method: 'PUT',
+          credentials: 'include',
+        }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to update conversation title');
+      }
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      // Update both the conversations list and the individual conversation
+      queryClient.setQueryData<ChatConversation[]>(['chat', 'conversations'], (old) =>
+        old?.map((conv) =>
+          conv.id === variables.conversationId ? { ...conv, title: variables.title } : conv
+        )
+      );
+      queryClient.setQueryData<ChatConversation>(['chat', 'conversation', variables.conversationId], (old) =>
+        old ? { ...old, title: variables.title } : old
+      );
+    },
   });
 };
 
 // Helper to delete a conversation
-export const deleteConversation = (conversationId: string) => {
-  updateConversations((conversations) => {
-    const updated = { ...conversations };
-    delete updated[conversationId];
-    return updated;
+export const useDeleteConversation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (conversationId: string) => {
+      const response = await fetch(
+        `${API_BASE_URL}/chat/conversations/${conversationId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+        }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to delete conversation');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] });
+    },
+  });
+};
+
+// Helper to get a single conversation
+export const useConversation = (conversationId: string | null) => {
+  return useQuery({
+    queryKey: ['chat', 'conversation', conversationId],
+    queryFn: async () => {
+      if (!conversationId) return null;
+      const response = await fetch(
+        `${API_BASE_URL}/chat/conversations/${conversationId}`,
+        {
+          credentials: 'include',
+        }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to fetch conversation');
+      }
+      return response.json() as Promise<ChatConversation>;
+    },
+    enabled: !!conversationId,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchInterval: false,
   });
 };
 

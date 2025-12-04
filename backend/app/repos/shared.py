@@ -3,6 +3,7 @@ from app.repos.jobs_repo import JobsRepo
 from app.repos.tender_repo import TenderRepo
 from app.database.mongo import MongoClientDep
 from app.repos.document_repo import DocumentRepo
+from app.repos.chat_repo import ChatRepo
 
 def get_tender_repo(client: MongoClientDep):
     return TenderRepo(client)
@@ -15,3 +16,6 @@ def get_jobs_repo(client: MongoClientDep):
 
 def get_requirements_repo(client: MongoClientDep):
     return RequirementsRepo(client)
+
+def get_chat_repo(client: MongoClientDep):
+    return ChatRepo(client)
