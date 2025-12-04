@@ -1,6 +1,7 @@
 from typing import Tuple
 from dataclasses import dataclass
 import re
+import json
 from typing import Dict, List
 import uuid
 import asyncio
@@ -365,10 +366,20 @@ class BaseInformationService:
 
         for successful_response, req in zip(results, base_information_requests):
             field_name = req.field_name
-
-           
             try:
                 output = self.llm_provider.get_output(successful_response, only_json=True)
+                
+                # Fix cases where LLM returns dict for value instead of string
+                try:
+                    output_dict = json.loads(output)
+                    if isinstance(output_dict.get("value"), dict):
+                        # Convert dict value to JSON string
+                        output_dict["value"] = json.dumps(output_dict["value"], ensure_ascii=False)
+                        output = json.dumps(output_dict, ensure_ascii=False)
+                except (json.JSONDecodeError, TypeError):
+                    # If we can't parse/fix it, continue with original output
+                    pass
+                
                 parsed_result: BaseInformation = self.parser.parse(output)
 
                 field_name = parsed_result.field_name

@@ -53,7 +53,7 @@ class TenderRepo:
         
         if tender_update.base_information is not None:
             update_doc["base_information"] = [
-                info.model_dump() for info in tender_update.base_information
+                info.model_dump(mode='json') for info in tender_update.base_information
             ]
         
         if not update_doc:
@@ -62,9 +62,14 @@ class TenderRepo:
         
         update_doc["updated_at"] = datetime.now(timezone.utc)
 
-        result = self.collection.update_one(
-            {"id": str(tender_id)}, {"$set": update_doc}
-        )
+        try:
+            result = self.collection.update_one(
+                {"id": str(tender_id)}, {"$set": update_doc}
+            )
+        except Exception as e:
+            logger.error(f"Error updating tender {tender_id}: {e}")
+            logger.error(f"Update document: {update_doc}")
+            raise
 
         if result.matched_count > 0:
             updated_doc = self.collection.find_one({"id": str(tender_id)})

@@ -7,7 +7,7 @@ llm:
       api_url: "https://api.openai.com/v1/chat/completions"
       models:
         gpt-4o:
-          rpm: 5000.0
+          rpm: 2.0
           tpm: 10000000.0
         gpt-4o-mini:
           rpm: 15000.0
@@ -18,7 +18,7 @@ llm:
         gpt-4:
           rpm: 500.0
           tpm: 30000.0
-        gpt-3.5-turbo:
+        gpt-4.1-mini:
           rpm: 10000.0
           tpm: 1000000.0
     

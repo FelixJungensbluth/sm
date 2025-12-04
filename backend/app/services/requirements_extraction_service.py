@@ -148,7 +148,6 @@ class RequirementExtractionService:
         requirements = []
         try:
             output = self.llm_provider.get_output(response, only_json=True)
-
             parsed_result = parser.invoke(AIMessage(content=output))
             for req in parsed_result.requirements:
                 requirements.append(
@@ -163,6 +162,6 @@ class RequirementExtractionService:
                     )
                 )
         except Exception as e:
-            logger.error(f"Parsing error: {e}")
+            logger.warning(f"Failed to parse requirements from response, skipping: {e}")
 
         return requirements

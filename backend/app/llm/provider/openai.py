@@ -60,7 +60,8 @@ class OpenAi(BaseLLM):
         ]
 
     def get_output(self, response: dict, only_json: bool = False) -> str:
-        content = response["response"]["output"][1]["content"][0]["text"]
+        # OpenAI API response structure: {"choices": [{"message": {"content": "..."}}]}
+        content = response["response"]["choices"][0]["message"]["content"]
         
         if only_json:
             return extract_json_from_content(content)
