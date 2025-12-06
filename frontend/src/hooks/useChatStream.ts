@@ -83,7 +83,7 @@ export function useChatStream() {
                   return;
                 }
               } catch (e) {
-                console.error('Error parsing SSE data:', e);
+                // Silently handle parsing errors - they're usually recoverable
               }
             }
           }

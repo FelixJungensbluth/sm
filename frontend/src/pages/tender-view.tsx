@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FolderTree } from "lucide-react";
+import { FolderTree } from "lucide-react";
+import { BackButton } from "@/components/shared/BackButton";
 import { PanelGroup, Panel } from "react-resizable-panels";
 import { useTenderById } from "@/hooks/use-tenders";
 import { useTenderDocuments } from "@/hooks/use-documents";
@@ -38,14 +39,7 @@ export function TenderView() {
     <div className="h-full flex flex-col">
       <div className="border-b bg-background py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="h-8 text-sm"
-          >
-            <ArrowLeft className="h-3 w-3 mr-1.5" />
-            Back
-          </Button>
+          <BackButton onClick={() => navigate(-1)} />
           <h1 className="text-lg font-semibold">{tender.title}</h1>
         </div>
 

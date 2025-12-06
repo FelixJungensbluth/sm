@@ -7,7 +7,7 @@ export const useTenders = () => {
 
   return useQuery({
     queryKey: ['tenders'],
-    queryFn: () => api.tenders.getTenders().then((res) => res.data ?? []),
+    queryFn: () => api.tenders.getTenders().then((res) => res.data.tenders ?? []),
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -16,19 +16,23 @@ export function useTenderById(id?: string) {
   const api = useApi();
   return useQuery({
     queryKey: ['tender', id],
-    queryFn: () => api.tenders.getTenderById(id!).then((res) => res.data),
+    queryFn: () => api.tenders.getTenderById(id!).then((res) => res.data.tender),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
   });
 }
 
 // Helper function to filter out null/undefined values from update data
-const getValidUpdates = (data: TenderUpdate): Partial<Tender> => {
+const getValidUpdates = (data: TenderUpdate & { order?: number }): Partial<Tender> => {
   const updates: Partial<Tender> = {};
   if (data.status != null) updates.status = data.status;
   if (data.title != null) updates.title = data.title;
   if (data.description != null) updates.description = data.description;
   if (data.base_information != null) updates.base_information = data.base_information;
+  // Support order field for drag & drop sorting (even if backend doesn't support it yet)
+  if (data.order != null && typeof data.order === 'number') {
+    (updates as any).order = data.order;
+  }
   return updates;
 };
 

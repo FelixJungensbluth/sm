@@ -47,8 +47,8 @@ export function Navbar() {
 
   return (
     <div className="border-b bg-background">
-      <div className="w-full px-3">
-        <div className="flex items-center h-12 py-2">
+      <div className="w-full px-2">
+        <div className="flex items-center h-10 py-1">
           <div className="flex-1 flex items-center">
             <Link to="/" className="hover:opacity-80 transition-opacity">
               <LayoutGrid className="h-5 w-5 border rounded p-1" />

@@ -48,14 +48,14 @@ const Dialog = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          'relative z-[9999] grid w-full max-w-lg gap-4 bg-background border p-6 shadow-lg duration-200 my-8',
+          'relative z-[9999] grid w-full max-w-lg gap-3 bg-background border p-4 shadow-lg duration-200 my-6',
           className
         )}
         {...props}
       >
         {!uncloseable && (
           <button
-            className="absolute right-4 top-4 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            className="absolute right-3 top-3 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             onClick={() => onOpenChange?.(false)}
           >
             <X className="h-4 w-4" />
@@ -75,7 +75,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      'flex flex-col space-y-1.5 text-center sm:text-left',
+      'flex flex-col space-y-1 text-center sm:text-left',
       className
     )}
     {...props}
@@ -114,7 +114,7 @@ const DialogContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('grid gap-4', className)} {...props} />
+  <div ref={ref} className={cn('grid gap-3', className)} {...props} />
 ));
 DialogContent.displayName = 'DialogContent';
 

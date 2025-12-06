@@ -175,73 +175,112 @@ export default function RequirementsViewer({
     };
   }, [handleContainerEvent]);
 
+  // Helper function to check if DOM is ready for highlighting
+  const isDOMReady = useCallback(() => {
+    if (!markdownRef.current) return false;
+    
+    // Check if there's actual text content in the markdown container
+    const hasContent = markdownRef.current.textContent && markdownRef.current.textContent.trim().length > 0;
+    
+    // Check if there are rendered elements (not just empty container)
+    const hasElements = markdownRef.current.children.length > 0 || 
+                       markdownRef.current.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, div').length > 0;
+    
+    return hasContent && hasElements;
+  }, []);
+
   // Highlight all requirements efficiently - mark each requirement separately for reliable association
   const highlightContent = useCallback(() => {
     if (!markdownRef.current || isHighlightingRef.current) return;
 
-    isHighlightingRef.current = true;
-
-    // Create or reuse Mark instance
-    if (!markRef.current) {
-      markRef.current = new Mark(markdownRef.current);
-    }
-    const marker = markRef.current;
-
-    // Build requirements map for quick lookup
-    requirementsMapRef.current.clear();
-    documentRequirements.forEach((req) => {
-      if (req.id) {
-        requirementsMapRef.current.set(req.id, req);
-      }
-    });
-
-    requestAnimationFrame(() => {
-      // Unmark everything first
-      marker.unmark({
-        done: () => {
-          if (allRequirementsData.length === 0) {
-            setIsMarkdownLoaded(true);
-            isHighlightingRef.current = false;
-            // Call updateSelectedHighlight separately after a brief delay to ensure DOM is ready
+    // Ensure DOM is ready before attempting to highlight
+    const attemptHighlight = (retries = 3) => {
+      if (!isDOMReady()) {
+        if (retries > 0) {
+          // Wait a bit more and try again
+          requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              updateSelectedHighlightRef.current();
-            });
-            return;
-          }
-
-          let completedRequirements = 0;
-          const totalRequirements = allRequirementsData.length;
-
-          // Mark each requirement separately to reliably associate marks with requirement IDs
-          allRequirementsData.forEach((data) => {
-            marker.mark(data.sources, {
-              separateWordSearch: false,
-              acrossElements: true,
-              ignorePunctuation: " :;.,-–—‒_(){}[]!'\"+=".split(""),
-              className: data.className,
-              cacheTextNodes: true,
-              combinePatterns: true,
-              each: (element: HTMLElement) => {
-                // Directly associate this mark with the requirement ID
-                element.dataset.requirementId = data.requirementId;
-              },
-              done: () => {
-                completedRequirements++;
-                if (completedRequirements === totalRequirements) {
-                  setIsMarkdownLoaded(true);
-                  isHighlightingRef.current = false;
-                  // Call updateSelectedHighlight separately after highlighting is complete
-                  requestAnimationFrame(() => {
-                    updateSelectedHighlightRef.current();
-                  });
-                }
-              },
+              attemptHighlight(retries - 1);
             });
           });
-        },
+        } else {
+          // Give up after retries, but still mark as loaded to prevent infinite waiting
+          console.warn('Markdown DOM not ready for highlighting after retries');
+          setIsMarkdownLoaded(true);
+          isHighlightingRef.current = false;
+        }
+        return;
+      }
+
+      isHighlightingRef.current = true;
+
+      // Create or reuse Mark instance
+      if (!markRef.current) {
+        markRef.current = new Mark(markdownRef.current);
+      }
+      const marker = markRef.current;
+
+      // Build requirements map for quick lookup
+      requirementsMapRef.current.clear();
+      documentRequirements.forEach((req) => {
+        if (req.id) {
+          requirementsMapRef.current.set(req.id, req);
+        }
       });
+
+      requestAnimationFrame(() => {
+        // Unmark everything first
+        marker.unmark({
+          done: () => {
+            if (allRequirementsData.length === 0) {
+              setIsMarkdownLoaded(true);
+              isHighlightingRef.current = false;
+              // Call updateSelectedHighlight separately after a brief delay to ensure DOM is ready
+              requestAnimationFrame(() => {
+                updateSelectedHighlightRef.current();
+              });
+              return;
+            }
+
+            let completedRequirements = 0;
+            const totalRequirements = allRequirementsData.length;
+
+            // Mark each requirement separately to reliably associate marks with requirement IDs
+            allRequirementsData.forEach((data) => {
+              marker.mark(data.sources, {
+                separateWordSearch: false,
+                acrossElements: true,
+                ignorePunctuation: " :;.,-–—‒_(){}[]!'\"+=".split(""),
+                className: data.className,
+                cacheTextNodes: true,
+                combinePatterns: true,
+                each: (element: HTMLElement) => {
+                  // Directly associate this mark with the requirement ID
+                  element.dataset.requirementId = data.requirementId;
+                },
+                done: () => {
+                  completedRequirements++;
+                  if (completedRequirements === totalRequirements) {
+                    setIsMarkdownLoaded(true);
+                    isHighlightingRef.current = false;
+                    // Call updateSelectedHighlight separately after highlighting is complete
+                    requestAnimationFrame(() => {
+                      updateSelectedHighlightRef.current();
+                    });
+                  }
+                },
+              });
+            });
+          },
+        });
+      });
+    };
+
+    // Start the highlighting attempt
+    requestAnimationFrame(() => {
+      attemptHighlight();
     });
-  }, [allRequirementsData, documentRequirements]); // Removed updateSelectedHighlight from dependencies
+  }, [allRequirementsData, documentRequirements, isDOMReady]); // Added isDOMReady to dependencies
 
   // Reset when document changes
   useEffect(() => {

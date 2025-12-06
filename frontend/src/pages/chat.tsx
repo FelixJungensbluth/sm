@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,8 +29,10 @@ import {
 import { useChatStream } from '@/hooks/useChatStream';
 import { useTenders } from '@/hooks/use-tenders';
 import type { ChatContext } from '@/lib/chat-types';
+import { toast } from 'sonner';
 
 export function Chat() {
+  const [searchParams] = useSearchParams();
   const { conversations, isLoading: conversationsLoading } = useChatConversations();
   const { data: tenders = [] } = useTenders();
   const createConversation = useCreateConversation();
@@ -60,6 +63,21 @@ export function Chat() {
     })),
   ];
 
+  // Set context from URL parameter if tenderId is provided
+  useEffect(() => {
+    const tenderIdFromUrl = searchParams.get('tenderId');
+    if (tenderIdFromUrl && tenders.length > 0) {
+      const tender = tenders.find((t) => t.id === tenderIdFromUrl);
+      if (tender) {
+        setSelectedContext({
+          id: 'tender',
+          name: tender.title,
+          tender_id: tender.id,
+        });
+      }
+    }
+  }, [searchParams, tenders]);
+
   // Auto-scroll to bottom when messages change or streaming
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -83,7 +101,8 @@ export function Chat() {
       setSelectedConversationId(result.id);
       setInputValue('');
     } catch (error) {
-      console.error('Failed to create conversation:', error);
+      toast.error('Failed to create conversation');
+      throw error;
     }
   }, [selectedContext, createConversation]);
 
@@ -139,18 +158,19 @@ export function Chat() {
             }, 500);
           }
         },
-        (error) => {
+        () => {
           setIsStreaming(false);
           setStreamingContent('');
           setPendingUserMessage(null); // Clear pending message on error
-          console.error('Streaming error:', error);
+          toast.error('Failed to stream message');
         }
       );
     } catch (error) {
       setIsStreaming(false);
       setStreamingContent('');
       setPendingUserMessage(null); // Clear pending message on error
-      console.error('Failed to send message:', error);
+      toast.error('Failed to send message');
+      throw error;
     }
   }, [inputValue, selectedConversationId, selectedContext, isStreaming, createConversation, streamMessage]);
 
@@ -163,7 +183,8 @@ export function Chat() {
           setSelectedConversationId(null);
         }
       } catch (error) {
-        console.error('Failed to delete conversation:', error);
+        toast.error('Failed to delete conversation');
+        throw error;
       }
     },
     [selectedConversationId, deleteConversation]
@@ -219,7 +240,7 @@ export function Chat() {
           className="min-w-0 min-h-0 overflow-hidden border-r bg-muted/30"
         >
           <div className="h-full flex flex-col">
-            <div className="p-4 border-b flex items-center justify-between">
+            <div className="p-2 border-b flex items-center justify-between">
               <h2 className="font-semibold text-sm">Conversations</h2>
               <Button
                 variant="ghost"
@@ -233,18 +254,18 @@ export function Chat() {
             </div>
             <div className="flex-1 overflow-y-auto">
               {conversationsLoading ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  <Loader2 className="h-8 w-8 mx-auto mb-2 opacity-50 animate-spin" />
+                <div className="p-2 text-center text-sm text-muted-foreground">
+                  <Loader2 className="h-6 w-6 mx-auto mb-1 opacity-50 animate-spin" />
                   <p>Loading conversations...</p>
                 </div>
               ) : conversations.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <div className="p-2 text-center text-sm text-muted-foreground">
+                  <MessageSquare className="h-6 w-6 mx-auto mb-1 opacity-50" />
                   <p>No conversations yet</p>
-                  <p className="text-xs mt-1">Start a new conversation to begin</p>
+                  <p className="text-xs mt-0.5">Start a new conversation to begin</p>
                 </div>
               ) : (
-                <div className="p-2">
+                <div className="p-1">
                   {conversations.map((conv, index) => (
                     <div key={conv.id}>
                       <div

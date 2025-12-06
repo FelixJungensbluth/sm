@@ -25,7 +25,6 @@ class MinioService:
             settings.MINIO_ENDPOINT,
             settings.MINIO_ACCESS_KEY,
             settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE == "True",
         )
 
     def upload_tender_file(self, tender_id: uuid.UUID, file: UploadFile, file_id: uuid.UUID):

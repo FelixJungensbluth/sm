@@ -11,7 +11,7 @@ class RequirementsRepo:
     def get_requirements_by_tender_id(self, tender_id: uuid.UUID) -> list[Requirement]:
         return list(self.collection.find({"tender_id": str(tender_id)}))
 
-    def create_requirements(self, requirements: list[Requirement]):
+    def create_requirements(self, requirements: list[Requirement]) -> None:
         docs = []
         for req in requirements:
             doc = req.model_dump()
@@ -21,5 +21,6 @@ class RequirementsRepo:
         self.collection.insert_many(docs)
 
 
-    def update_requirement_status(self, requirement_id: uuid.UUID, requirement_status: RequirementStatus) :
-        self.collection.update_one({"id": str(requirement_id)}, {"$set": {"status": requirement_status.value}})
+    def update_requirement_status(self, requirement_id: uuid.UUID, requirement_status: RequirementStatus) -> bool:
+        result = self.collection.update_one({"id": str(requirement_id)}, {"$set": {"status": requirement_status.value}})
+        return result.matched_count > 0

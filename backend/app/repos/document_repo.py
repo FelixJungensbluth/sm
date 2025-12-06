@@ -9,6 +9,12 @@ from app.models.document import Document
 class DocumentRepo:
     def __init__(self, client: MongoClient):
         self.collection = client["skillMatch"]["documents"]
+        self._ensure_indexes()
+    
+    def _ensure_indexes(self) -> None:
+        """Create indexes for frequently queried fields."""
+        self.collection.create_index("id", unique=True, name="document_id_idx")
+        self.collection.create_index("tender_id", name="document_tender_id_idx")
 
     def get_documents(self) -> List[Document]:
         documents = []
@@ -26,7 +32,11 @@ class DocumentRepo:
                 if document:
                     documents.append(document)
             return documents
-        except Exception:
+        except (ValueError, TypeError) as e:
+            logger.error(f"Error parsing document_ids: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error getting documents by ids: {e}")
             return []
 
     def get_documents_by_tender_id(self, tender_id: uuid.UUID) -> List[Document]:
@@ -37,7 +47,11 @@ class DocumentRepo:
                 if document:
                     documents.append(document)
             return documents
-        except Exception:
+        except (ValueError, TypeError) as e:
+            logger.error(f"Error parsing tender_id {tender_id}: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error getting documents for tender {tender_id}: {e}")
             return []
 
     def create_documents(self, documents: list[Document]) -> list[Document]:
@@ -60,7 +74,8 @@ class DocumentRepo:
         try:
             result = self.collection.delete_one({"id": str(document_id)})
             return result.deleted_count > 0
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error deleting document {document_id}: {e}")
             return False
 
     def _document_to_doc(self, document: Document) -> dict:

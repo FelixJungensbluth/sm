@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ChatConversation, ChatMessage } from '@/lib/chat-types';
+import { useApi } from '@/hooks/use-api';
 
 interface UseChatConversationsResult {
   conversations: ChatConversation[];
@@ -7,22 +8,16 @@ interface UseChatConversationsResult {
   isLoading: boolean;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
 /**
  * Hook for managing chat conversations from backend API
  */
 export const useChatConversations = (): UseChatConversationsResult => {
+  const api = useApi();
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ['chat', 'conversations'],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/chat/conversations`, {
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch conversations');
-      }
-      return response.json() as Promise<ChatConversation[]>;
+      const res = await api.chat.getConversations();
+      return res.data.conversations;
     },
     staleTime: 30 * 1000, // 30 seconds
   });
@@ -40,6 +35,7 @@ export const useChatConversations = (): UseChatConversationsResult => {
 
 // Helper to create a new conversation
 export const useCreateConversation = () => {
+  const api = useApi();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -52,24 +48,12 @@ export const useCreateConversation = () => {
       tenderId?: string | null;
       contextType?: string;
     }) => {
-      const params = new URLSearchParams({ title });
-      if (tenderId) params.append('tender_id', tenderId);
-      if (contextType) params.append('context_type', contextType);
-
-      const response = await fetch(
-        `${API_BASE_URL}/chat/conversations?${params.toString()}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        }
-      );
-      if (!response.ok) {
-        throw new Error('Failed to create conversation');
-      }
-      return response.json() as Promise<ChatConversation>;
+      const res = await api.chat.createConversation({
+        title,
+        tender_id: tenderId ?? undefined,
+        context_type: contextType ?? undefined,
+      });
+      return res.data.conversation;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] });
@@ -79,6 +63,7 @@ export const useCreateConversation = () => {
 
 // Helper to update conversation title
 export const useUpdateConversationTitle = () => {
+  const api = useApi();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -89,17 +74,8 @@ export const useUpdateConversationTitle = () => {
       conversationId: string;
       title: string;
     }) => {
-      const response = await fetch(
-        `${API_BASE_URL}/chat/conversations/${conversationId}/title?title=${encodeURIComponent(title)}`,
-        {
-          method: 'PUT',
-          credentials: 'include',
-        }
-      );
-      if (!response.ok) {
-        throw new Error('Failed to update conversation title');
-      }
-      return response.json();
+      const res = await api.chat.updateConversationTitle(conversationId, { title });
+      return res.data;
     },
     onSuccess: (_, variables) => {
       // Update both the conversations list and the individual conversation
@@ -117,21 +93,13 @@ export const useUpdateConversationTitle = () => {
 
 // Helper to delete a conversation
 export const useDeleteConversation = () => {
+  const api = useApi();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (conversationId: string) => {
-      const response = await fetch(
-        `${API_BASE_URL}/chat/conversations/${conversationId}`,
-        {
-          method: 'DELETE',
-          credentials: 'include',
-        }
-      );
-      if (!response.ok) {
-        throw new Error('Failed to delete conversation');
-      }
-      return response.json();
+      const res = await api.chat.deleteConversation(conversationId);
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] });
@@ -141,20 +109,13 @@ export const useDeleteConversation = () => {
 
 // Helper to get a single conversation
 export const useConversation = (conversationId: string | null) => {
+  const api = useApi();
   return useQuery({
     queryKey: ['chat', 'conversation', conversationId],
     queryFn: async () => {
       if (!conversationId) return null;
-      const response = await fetch(
-        `${API_BASE_URL}/chat/conversations/${conversationId}`,
-        {
-          credentials: 'include',
-        }
-      );
-      if (!response.ok) {
-        throw new Error('Failed to fetch conversation');
-      }
-      return response.json() as Promise<ChatConversation>;
+      const res = await api.chat.getConversation(conversationId);
+      return res.data.conversation;
     },
     enabled: !!conversationId,
     staleTime: 30 * 1000,

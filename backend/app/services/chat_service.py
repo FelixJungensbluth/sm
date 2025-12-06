@@ -9,6 +9,10 @@ from app.repos.tender_repo import TenderRepo
 from app.models.chat import ChatConversation, ChatMessage
 from app.config.logger import logger
 
+# Constants
+DEFAULT_RAG_TOP_K = 10
+MAX_CONVERSATION_HISTORY = 10
+
 
 class ChatService:
     def __init__(
@@ -49,11 +53,11 @@ class ChatService:
             tender_ids = [t.id for t in tenders]
             if tender_ids:
                 chunks = await self.rag_service.retrieve_chunks_global(
-                    tender_ids, query, top_k=10
+                    tender_ids, query, top_k=DEFAULT_RAG_TOP_K
                 )
         elif context_type == "tender" and tender_id:
             # Search specific tender collection
-            chunks = await self.rag_service.retrieve_chunks(tender_id, query, top_k=10)
+            chunks = await self.rag_service.retrieve_chunks(tender_id, query, top_k=DEFAULT_RAG_TOP_K)
 
         if not chunks:
             return ""
@@ -105,8 +109,8 @@ Answer the user's question based on the context above."""
                 )
             )
 
-        # Add conversation history (last 10 messages to avoid token limits)
-        history_messages = conversation.messages[-10:]
+        # Add conversation history (last N messages to avoid token limits)
+        history_messages = conversation.messages[-MAX_CONVERSATION_HISTORY:]
         for msg in history_messages:
             messages.append(LlmRequest(role=msg.role, message=msg.content))
 

@@ -10,8 +10,13 @@ import os
 import uuid
 import traceback
 from typing import List
+from datetime import timedelta
 
 from app.config.logger import logger
+
+# Constants
+DEFAULT_WORKER_CONCURRENCY = 4
+DEFAULT_POLL_INTERVAL = 1.0
 from app.config.settings import get_settings
 from app.models.tender import Tender
 from app.models.document import Document
@@ -137,7 +142,7 @@ async def run_step_for_job(job: dict) -> None:
         mark_step_error(job["_id"], idx, f"{exc}\n{tb}")
 
 
-async def worker_loop(concurrency: int = 4, poll_interval: float = 1.0) -> None:
+async def worker_loop(concurrency: int = DEFAULT_WORKER_CONCURRENCY, poll_interval: float = DEFAULT_POLL_INTERVAL) -> None:
     worker_id = f"tender-worker-{uuid.uuid4()}"
     logger.info(f"Starting worker {worker_id} with concurrency={concurrency}")
 
@@ -164,5 +169,5 @@ async def worker_loop(concurrency: int = 4, poll_interval: float = 1.0) -> None:
 
 
 if __name__ == "__main__":
-    concurrency = int(os.getenv("TENDER_WORKER_CONCURRENCY", "4"))
+    concurrency = int(os.getenv("TENDER_WORKER_CONCURRENCY", str(DEFAULT_WORKER_CONCURRENCY)))
     asyncio.run(worker_loop(concurrency=concurrency))

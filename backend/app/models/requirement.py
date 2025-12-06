@@ -28,3 +28,14 @@ class Requirement(BaseModel):
     status: RequirementStatus = RequirementStatus.PENDING
     note: Optional[str] = None
     tender_id: uuid.UUID
+
+
+class RequirementListResponse(BaseModel):
+    """Response model for a list of requirements."""
+    requirements: list[Requirement]
+
+
+class UpdateRequirementStatusResponse(BaseModel):
+    """Response model for updating requirement status."""
+    success: bool
+    message: str

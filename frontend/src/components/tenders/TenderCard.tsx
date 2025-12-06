@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { Calendar } from 'lucide-react';
+import { Calendar, Tag } from 'lucide-react';
 import type { Tender } from '@/services/api/api';
 import type { BaseInformation } from '@/services/api/api';
 
@@ -14,7 +14,7 @@ interface TenderCardProps {
   baseInformation?: BaseInformation[];
 }
 
-export function TenderCard({
+export const TenderCard = memo(function TenderCard({
   tender,
   index,
   status,
@@ -45,7 +45,7 @@ export function TenderCard({
     
     if (!info || info.length === 0) {
       return {
-        description: null,
+        type: null,
         submissionDeadline: null,
         questionsDeadline: null,
       };
@@ -59,7 +59,7 @@ export function TenderCard({
     };
 
     return {
-      description: findField('compact_description') || findField('description'),
+      type: findField('type'),
       submissionDeadline: findField('submission_deadline'),
       questionsDeadline: findField('questions_deadline'),
     };
@@ -75,47 +75,42 @@ export function TenderCard({
       onClick={handleClick}
       isOpen={isOpen}
       forwardedRef={localRef}
+      className="h-[140px]"
     >
-      {/* Title */}
-      <div className="flex flex-1 gap-2 items-center min-w-0">
-        <h4 className="flex-1 min-w-0 line-clamp-2 font-medium text-sm ">
-          {tender.title}
-        </h4>
-      </div>
-      
-      {(tender.description || baseInfoFields.description) && (
-        <p className="flex-1 text-xs text-secondary-foreground break-words mt-1 font-light">
-          {(() => {
-            const desc = baseInfoFields.description || tender.description || '';
-            return desc.length > 130 ? `${desc.substring(0, 130)}...` : desc;
-          })()}
-        </p>
-      )}
-      
-      {/* Deadlines */}
-      {(baseInfoFields.submissionDeadline || baseInfoFields.questionsDeadline) && (
-        <div className="flex flex-col gap-1 mt-2 pt-2 border-t border-border">
-          {baseInfoFields.questionsDeadline && (
-            <div className="flex items-center gap-1.5 text-xs text-secondary-foreground">
-              <Calendar className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">
-                <span className="font-medium">Questions:</span>{' '}
-                {baseInfoFields.questionsDeadline}
-              </span>
-            </div>
-          )}
-          {baseInfoFields.submissionDeadline && (
-            <div className="flex items-center gap-1.5 text-xs text-secondary-foreground">
-              <Calendar className="h-3 w-3 flex-shrink-0" />
-              <span className="truncate">
-                <span className="font-medium">Submission:</span>{' '}
-                {baseInfoFields.submissionDeadline}
-              </span>
-            </div>
-          )}
+      <div className="flex flex-col h-full">
+        {/* Title */}
+        <div className="flex gap-2 items-center min-w-0 mb-2">
+          <h4 className="flex-1 min-w-0 line-clamp-2 font-medium text-sm">
+            {tender.title}
+          </h4>
         </div>
-      )}
+        
+        {/* Type and Deadlines */}
+        <div className="flex flex-col gap-1 mt-auto pt-2">
+          <div className="flex items-center gap-1.5 text-xs text-secondary-foreground">
+            <Tag className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">
+              <span className="font-medium">Type:</span>{' '}
+              {baseInfoFields.type || '-'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-secondary-foreground">
+            <Calendar className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">
+              <span className="font-medium">Questions:</span>{' '}
+              {baseInfoFields.questionsDeadline || '-'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-secondary-foreground">
+            <Calendar className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">
+              <span className="font-medium">Submission:</span>{' '}
+              {baseInfoFields.submissionDeadline || '-'}
+            </span>
+          </div>
+        </div>
+      </div>
     </KanbanCard>
   );
-}
+});
 

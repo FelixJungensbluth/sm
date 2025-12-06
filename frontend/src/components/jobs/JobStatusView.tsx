@@ -11,6 +11,7 @@ import {
 import { useJobs, useCancelJob, useRestartJob } from '@/hooks/use-jobs';
 import type { TenderJob } from '@/services/api/api';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -75,16 +76,20 @@ export function JobStatusView() {
   const handleCancel = async (jobId: string) => {
     try {
       await cancelJob.mutateAsync(jobId);
+      toast.success('Job cancelled');
     } catch (error) {
-      console.error('Failed to cancel job:', error);
+      toast.error('Failed to cancel job');
+      throw error;
     }
   };
 
   const handleRestart = async (jobId: string, stepIndex: number = 0) => {
     try {
       await restartJob.mutateAsync({ jobId, stepIndex });
+      toast.success('Job restarted');
     } catch (error) {
-      console.error('Failed to restart job:', error);
+      toast.error('Failed to restart job');
+      throw error;
     }
   };
 

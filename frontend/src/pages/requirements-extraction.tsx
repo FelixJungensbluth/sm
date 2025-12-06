@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FolderTree, Table2, FileText } from "lucide-react";
+import { FolderTree, Table2, FileText } from "lucide-react";
+import { BackButton } from "@/components/shared/BackButton";
 import { PanelGroup, Panel } from "react-resizable-panels";
 import { useTenderById } from "@/hooks/use-tenders";
 import { useTenderDocuments } from "@/hooks/use-documents";
@@ -54,14 +55,7 @@ export function RequirementsExtraction() {
     <div className="h-full flex flex-col">
       <div className="border-b bg-background py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="h-8 text-sm"
-          >
-            <ArrowLeft className="h-3 w-3 mr-1.5" />
-            Back
-          </Button>
+          <BackButton onClick={() => navigate(-1)} />
           <h1 className="text-lg font-semibold">{tender.title}</h1>
         </div>
 
@@ -113,9 +107,6 @@ export function RequirementsExtraction() {
             >
               <div className="h-full border-r bg-muted/30 overflow-y-auto">
                 <div className="space-y-3">
-                  <h2 className="p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b border-border/50">
-                    Requirements
-                  </h2>
                   <div>
                     {(() => {
                       const selectedIndex = currentRequirement
@@ -158,22 +149,18 @@ export function RequirementsExtraction() {
                   currentRequirement={currentRequirement}
                   onRequirementDelete={(id) => {
                     // TODO: Implement delete functionality
-                    console.log("Delete requirement:", id);
                   }}
                   onRequirementDeletePermanent={(id) => {
                     // TODO: Implement permanent delete functionality
-                    console.log("Permanent delete requirement:", id);
                   }}
                   onRequirementRestore={(id) => {
                     // TODO: Implement restore functionality
-                    console.log("Restore requirement:", id);
                   }}
                   onRequirementDetail={(requirement) => {
                     setCurrentRequirement(requirement);
                   }}
                   onStatusUpdate={(id, status) => {
                     // TODO: Implement status update functionality
-                    console.log("Update requirement status:", id, status);
                   }}
                 />
               </div>

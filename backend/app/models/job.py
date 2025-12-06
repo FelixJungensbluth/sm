@@ -46,7 +46,13 @@ class TenderJob(BaseModel):
 
 
 class JobResponse(BaseModel):
+    """Response model for job operations."""
     job_id: str
     message: str
     status: str
+
+
+class JobListResponse(BaseModel):
+    """Response model for a list of jobs."""
+    jobs: list[TenderJob]
 

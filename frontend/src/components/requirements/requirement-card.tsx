@@ -1,12 +1,11 @@
 import type { Requirement } from "@/services/api/api";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useApi } from "@/hooks/use-api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, X } from "lucide-react";
 import { useCallback } from "react";
 import { EXCLUSION, EVALUATION } from "@/constants/requirement-categories";
+import { ApproveRejectButtons } from "@/components/shared/ApproveRejectButtons";
 
 interface RequirementCardProps {
   requirement: Requirement;
@@ -92,33 +91,14 @@ export default function RequirementCard({
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant={requirement.status === "approved" ? "default" : "outline"}
+        <div onClick={(e) => e.stopPropagation()}>
+          <ApproveRejectButtons
+            currentStatus={requirement.status as "approved" | "rejected" | null}
+            onApprove={handleApprove}
+            onReject={handleReject}
+            isPending={updateStatusMutation.isPending}
             size="xs"
-            onClick={handleApprove}
-            disabled={updateStatusMutation.isPending || requirement.status === "approved"}
-            className={cn(
-              "h-6 px-2 py-1 text-xs",
-              requirement.status === "approved" && "!bg-black !text-white hover:!bg-black disabled:!bg-black disabled:!text-white disabled:!opacity-100"
-            )}
-          >
-            <Check className="h-2.5 w-2.5 mr-1" />
-            Approve
-          </Button>
-          <Button
-            variant={requirement.status === "rejected" ? "default" : "outline"}
-            size="xs"
-            onClick={handleReject}
-            disabled={updateStatusMutation.isPending || requirement.status === "rejected"}
-            className={cn(
-              "h-6 px-2 py-1 text-xs",
-              requirement.status === "rejected" && "!bg-black !text-white hover:!bg-black disabled:!bg-black disabled:!text-white disabled:!opacity-100"
-            )}
-          >
-            <X className="h-2.5 w-2.5 mr-1" />
-            Reject
-          </Button>
+          />
         </div>
       </div>
     </div>

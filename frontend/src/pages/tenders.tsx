@@ -6,7 +6,6 @@ import TenderTableView from "@/components/tenders/TenderTableView";
 import { TenderSidecard } from "@/components/tenders/TenderSidecard";
 import type { DragEndEvent } from "@/components/ui/shadcn-io/kanban";
 import { CreateTenderDialog } from "@/components/tenders/CreateTenderDialog";
-import { CommandMenu } from "@/components/command-menu";
 import { useSearch } from "@/contexts/search-context";
 import { useTenders, useUpdateTender, useCreateTender, useDeleteTender } from "@/hooks/use-tenders";
 import type { Tender } from "@/services/api/api";
@@ -21,10 +20,8 @@ export function Tenders() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [selectedTender, setSelectedTender] = useState<Tender | undefined>(undefined);
-  const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
 
   const { data: tenders = [] } = useTenders();
-  console.log(tenders);
   
   const { query: searchQuery } = useSearch();
   const updateTender = useUpdateTender();
@@ -71,13 +68,24 @@ export function Tenders() {
         groups[TENDER_STATUSES[0]].push(tender);
       }
     });
+    
+    // Sort each group by order (or created_at as fallback)
+    Object.keys(groups).forEach((status) => {
+      groups[status].sort((a, b) => {
+        const aOrder = ('order' in a && typeof a.order === 'number') ? a.order : new Date(a.created_at).getTime();
+        const bOrder = ('order' in b && typeof b.order === 'number') ? b.order : new Date(b.created_at).getTime();
+        return bOrder - aOrder; // Higher order first (newer/more recent first)
+      });
+    });
+    
     return groups;
   }, [filteredTenders]);
 
   const sortedTenders = useMemo(() => {
     return [...filteredTenders].sort((a, b) => {
-      const aOrder = (a as any).order ?? new Date(a.created_at).getTime();
-      const bOrder = (b as any).order ?? new Date(b.created_at).getTime();
+      // Type-safe access to order property if it exists
+      const aOrder = ('order' in a && typeof a.order === 'number') ? a.order : new Date(a.created_at).getTime();
+      const bOrder = ('order' in b && typeof b.order === 'number') ? b.order : new Date(b.created_at).getTime();
       return bOrder - aOrder;
     });
   }, [filteredTenders]);
@@ -88,21 +96,117 @@ export function Tenders() {
       if (!over || !active.data.current) return;
 
       const draggedTenderId = active.id as string;
-      const newStatus = over.id as Tender["status"];
       const tender = tendersById[draggedTenderId];
       if (!tender) return;
 
       const oldStatus = active.data.current.parent as Tender["status"];
+      const oldIndex = active.data.current.index as number;
+      
+      // Determine the new status - could be a status (column) or a tender ID (card)
+      const overId = over.id as string;
+      const isStatusColumn = TENDER_STATUSES.includes(overId as Tender["status"]);
+      
+      let newStatus: Tender["status"];
+      let targetTenderId: string | null = null;
+      
+      if (isStatusColumn) {
+        // Dropped on a column
+        newStatus = overId as Tender["status"];
+      } else {
+        // Dropped on a card - find which status that card belongs to
+        targetTenderId = overId;
+        const targetTender = tendersById[overId];
+        if (targetTender) {
+          newStatus = targetTender.status;
+        } else {
+          // Fallback to old status if target not found
+          newStatus = oldStatus;
+        }
+      }
 
-      // Only update if status changed
+      // Handle status change (moving between columns)
       if (oldStatus !== newStatus) {
         updateTender.mutate({
           id: draggedTenderId,
           data: { status: newStatus },
         });
+        return;
+      }
+
+      // Handle reordering within the same column
+      if (oldStatus === newStatus) {
+        const currentGroup = [...(groupedTenders[oldStatus] || [])];
+        const draggedIndex = currentGroup.findIndex((t) => t.id === draggedTenderId);
+        
+        if (draggedIndex === -1) return;
+
+        let newIndex = draggedIndex;
+        
+        // If dropped on another card, calculate position relative to that card
+        if (targetTenderId && targetTenderId !== draggedTenderId) {
+          const targetIndex = currentGroup.findIndex((t) => t.id === targetTenderId);
+          if (targetIndex !== -1) {
+            // Remove dragged item from array temporarily
+            const [draggedItem] = currentGroup.splice(draggedIndex, 1);
+            
+            // Calculate new position
+            if (draggedIndex < targetIndex) {
+              // Dragging down - place after target
+              newIndex = targetIndex; // After removing dragged item, target index is now targetIndex
+            } else {
+              // Dragging up - place before target
+              newIndex = targetIndex;
+            }
+            
+            // Insert at new position
+            currentGroup.splice(newIndex, 0, draggedItem);
+          }
+        }
+        // If dropped on column (not a card), maintain current position (no reordering needed)
+
+        // Only update if position actually changed
+        if (newIndex === draggedIndex) return;
+
+        // Calculate new order value
+        // Get orders of surrounding cards to calculate a new order
+        const getOrder = (t: Tender) => {
+          return ('order' in t && typeof t.order === 'number') 
+            ? t.order 
+            : new Date(t.created_at).getTime();
+        };
+
+        let newOrder: number;
+        
+        if (newIndex === 0) {
+          // Moving to the top - set order higher than the current top
+          const topOrder = currentGroup.length > 1 ? getOrder(currentGroup[1]) : Date.now();
+          newOrder = topOrder + 1000;
+        } else if (newIndex >= currentGroup.length - 1) {
+          // Moving to the bottom - set order lower than the current bottom
+          const bottomIndex = currentGroup.length - 2;
+          const bottomOrder = bottomIndex >= 0 
+            ? getOrder(currentGroup[bottomIndex]) 
+            : Date.now();
+          newOrder = Math.max(0, bottomOrder - 1000);
+        } else {
+          // Moving to middle - calculate order between adjacent cards
+          const prevOrder = getOrder(currentGroup[newIndex - 1]);
+          const nextOrder = getOrder(currentGroup[newIndex + 1]);
+          newOrder = (prevOrder + nextOrder) / 2;
+        }
+
+        // Update the tender with new order
+        // Note: This will work with optimistic updates even if backend doesn't support order
+        updateTender.mutate({
+          id: draggedTenderId,
+          data: { 
+            // @ts-expect-error - order might not be in TenderUpdate type, but we'll try to send it
+            order: newOrder 
+          },
+        });
       }
     },
-    [tendersById, updateTender],
+    [tendersById, updateTender, groupedTenders],
   );
 
   const handleViewTenderDetails = useCallback((tender: Tender) => {
@@ -110,7 +214,6 @@ export function Tenders() {
   }, []);
 
   const handleCreateNewTender = useCallback(() => {
-    console.log('handleCreateNewTender called');
     setIsCreateDialogOpen(true);
   }, []);
 
@@ -230,15 +333,6 @@ export function Tenders() {
           onCreateTender={handleCreateTender}
           isLoading={isCreating}
         />
-
-      <CommandMenu
-        open={isCommandMenuOpen}
-        onOpenChange={setIsCommandMenuOpen}
-        onCreateTender={handleCreateNewTender}
-        onDeleteTender={handleDeleteTender}
-        selectedTender={selectedTender}
-        tenders={filteredTenders}
-      />
     </div>
   );
 }

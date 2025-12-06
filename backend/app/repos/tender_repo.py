@@ -1,5 +1,6 @@
 from app.models.base_information import BaseInformationStatus
 from typing import List, Optional
+from enum import Enum
 from pymongo import MongoClient
 from datetime import datetime, timezone
 import uuid
@@ -12,10 +13,32 @@ from app.models.base_information import BaseInformation
 class TenderRepo:
     def __init__(self, client: MongoClient):
         self.collection = client["skillMatch"]["tenders"]
+        self._ensure_indexes()
+    
+    def _ensure_indexes(self) -> None:
+        """Create indexes for frequently queried fields."""
+        self.collection.create_index("id", unique=True, name="tender_id_idx")
+        self.collection.create_index("status", name="tender_status_idx")
+        self.collection.create_index("created_at", name="tender_created_at_idx")
+        self.collection.create_index("updated_at", name="tender_updated_at_idx")
 
     def get_tenders(self) -> List[Tender]:
+        """Get all tenders. For better performance, use get_tenders_by_ids when possible."""
         tenders = []
         for doc in self.collection.find():
+            tender = self._doc_to_tender(doc)
+            if tender:
+                tenders.append(tender)
+        return tenders
+    
+    def get_tenders_by_ids(self, tender_ids: List[uuid.UUID]) -> List[Tender]:
+        """Get tenders by their IDs. More efficient than get_tenders when filtering by IDs."""
+        if not tender_ids:
+            return []
+        
+        tenders = []
+        id_strings = [str(tid) for tid in tender_ids]
+        for doc in self.collection.find({"id": {"$in": id_strings}}):
             tender = self._doc_to_tender(doc)
             if tender:
                 tenders.append(tender)
@@ -28,7 +51,11 @@ class TenderRepo:
                 return self._doc_to_tender(doc)
 
             return None
-        except Exception:
+        except (ValueError, TypeError) as e:
+            logger.error(f"Error parsing tender_id {tender_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error getting tender {tender_id}: {e}")
             return None
 
     def create_tender(self, tender: Tender) -> Tender | None:
@@ -80,7 +107,8 @@ class TenderRepo:
         try:
             result = self.collection.delete_one({"id": str(tender_id)})
             return result.deleted_count > 0
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error deleting tender {tender_id}: {e}")
             return False
     
     def update_tender_base_information_status(self, tender_id: uuid.UUID, field_name: str, base_information_status: BaseInformationStatus) -> bool:
@@ -91,12 +119,15 @@ class TenderRepo:
         return result.matched_count > 0
 
     def _tender_to_doc(self, tender: Tender) -> dict:
-        doc = tender.model_dump()
+        # Use mode='json' to serialize enums to strings and datetimes to ISO strings
+        # MongoDB can handle both datetime objects and ISO strings
+        doc = tender.model_dump(mode='json')
         doc["id"] = str(tender.id)
-        if isinstance(doc.get("created_at"), datetime):
-            doc["created_at"] = doc["created_at"]
-        if isinstance(doc.get("updated_at"), datetime):
-            doc["updated_at"] = doc["updated_at"]
+        # Convert ISO datetime strings back to datetime objects for MongoDB
+        if isinstance(doc.get("created_at"), str):
+            doc["created_at"] = datetime.fromisoformat(doc["created_at"].replace("Z", "+00:00"))
+        if isinstance(doc.get("updated_at"), str):
+            doc["updated_at"] = datetime.fromisoformat(doc["updated_at"].replace("Z", "+00:00"))
         return doc
 
     def _doc_to_tender(self, doc: dict) -> Optional[Tender]:

@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 
 export interface FileWithPath extends File {
   fullPath?: string;
@@ -67,7 +68,8 @@ export function useFileDrop({ onFilesSelected }: UseFileDropProps) {
           onFilesSelected?.(collected);
         }
       } catch (err) {
-        console.error('Error processing dropped files', err);
+        toast.error('Error processing dropped files');
+        throw err;
       } finally {
         setIsProcessing(false);
         event.dataTransfer.clearData();

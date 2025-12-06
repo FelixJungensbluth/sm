@@ -6,7 +6,7 @@ export function useRequirementsForTender(tenderId: string) {
   const api = useApi();
   return useQuery({
     queryKey: ['requirementsForTender', tenderId],
-    queryFn: () => api.requirements.getRequirementsForTender(tenderId).then((res) => res.data),
+    queryFn: () => api.requirements.getRequirementsForTender(tenderId).then((res) => res.data.requirements),
     enabled: !!tenderId,
     staleTime: 5 * 60 * 1000,
   });

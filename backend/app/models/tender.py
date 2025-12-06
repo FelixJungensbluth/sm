@@ -53,3 +53,31 @@ class TenderUpdate(BaseModel):
     description: Optional[str] = None
     base_information: Optional[list[BaseInformation]] = None
     status: Optional[TenderReviewStatus] = None
+
+
+class CreateTenderResponse(BaseModel):
+    """Response model for tender creation."""
+    tender_id: str
+    job_id: str
+    status: str
+
+
+class TenderResponse(BaseModel):
+    """Response model for a single tender."""
+    tender: Tender
+
+
+class TenderListResponse(BaseModel):
+    """Response model for a list of tenders."""
+    tenders: list[Tender]
+
+
+class TenderDocumentListResponse(BaseModel):
+    """Response model for tender documents."""
+    documents: list[dict]  # Using dict to avoid circular import with Document
+
+
+class UpdateTenderBaseInformationStatusResponse(BaseModel):
+    """Response model for updating tender base information status."""
+    success: bool
+    message: str

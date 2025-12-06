@@ -53,29 +53,31 @@ function TenderTableView({
         header: 'Title',
         cell: ({ row }) => {
           const tender = row.original;
+          return (
+            <div className="flex flex-col gap-1">
+              <h4 className="font-light text-sm">{tender.title}</h4>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'type',
+        header: 'Type',
+        cell: ({ row }) => {
+          const tender = row.original;
           const baseInfo = tender.base_information || [];
-          
-          // Extract description from base_information like TenderCard does
           const findField = (fieldName: string): string | null => {
             const field = baseInfo.find(
               (inf) => inf.field_name === fieldName && inf.value
             );
             return field?.value || null;
           };
-          
-          const description = findField('compact_description') || 
-                             findField('description') || 
-                             tender.description;
+          const type = findField('type');
           
           return (
-            <div className="flex flex-col gap-1">
-              <h4 className="font-light text-sm">{tender.title}</h4>
-              {description && (
-                <p className="text-xs text-secondary-foreground line-clamp-2">
-                  {description}
-                </p>
-              )}
-            </div>
+            <span className="text-sm text-secondary-foreground">
+              {type || '-'}
+            </span>
           );
         },
       },

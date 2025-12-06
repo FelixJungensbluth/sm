@@ -55,3 +55,35 @@ class ChatResponse(BaseModel):
     content: str
 
 
+class CreateConversationResponse(BaseModel):
+    """Response model for conversation creation."""
+    conversation: ChatConversation
+
+
+class ConversationListResponse(BaseModel):
+    """Response model for a list of conversations."""
+    conversations: list[ChatConversation]
+
+
+class ConversationResponse(BaseModel):
+    """Response model for a single conversation."""
+    conversation: ChatConversation
+
+
+class UpdateConversationTitleResponse(BaseModel):
+    """Response model for updating conversation title."""
+    success: bool
+    message: str
+
+
+class DeleteConversationResponse(BaseModel):
+    """Response model for deleting a conversation."""
+    success: bool
+    message: str
+
+
+class ChatTenderListResponse(BaseModel):
+    """Response model for chat tender list."""
+    tenders: list[dict]  # Simplified tender info for chat context
+
+

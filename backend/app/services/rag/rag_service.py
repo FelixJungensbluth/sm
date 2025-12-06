@@ -11,6 +11,12 @@ from app.models.document import ProcessedDocument
 
 from app.config.logger import logger
 
+# Constants
+DEFAULT_CHUNK_SIZE = 1500
+DEFAULT_CHUNK_OVERLAP = 300
+DEFAULT_EMBEDDING_VECTOR_SIZE = 768
+DEFAULT_TOP_K = 10
+
 
 @dataclass(frozen=True)
 class Chunk:
@@ -23,12 +29,11 @@ class Chunk:
 class RagService:
     def __init__(self, settings: SettingsDep, embedding_provider: BaseEmbedding):
         self.settings = settings
-        self.splitter = RecursiveSplitter(chunk_size=1500, chunk_overlap=300)
+        self.splitter = RecursiveSplitter(chunk_size=DEFAULT_CHUNK_SIZE, chunk_overlap=DEFAULT_CHUNK_OVERLAP)
         self.client = AsyncQdrantClient(
             url=self.settings.QDRANT_URI, api_key=self.settings.QDRANT_API_KEY
         )
 
-        # self.splitter = SemanticSplitter(self._embeddings)
         self.reranker: Optional[RankLlm] = None
         self.embedding_provider = embedding_provider
 
@@ -37,7 +42,7 @@ class RagService:
             await self.client.create_collection(
                 collection_name=collection_name,
                 vectors_config=models.VectorParams(
-                    size=768, distance=models.Distance.COSINE
+                    size=DEFAULT_EMBEDDING_VECTOR_SIZE, distance=models.Distance.COSINE
                 ),
             )
             logger.info(f"Successfully created collection {collection_name}")
@@ -53,22 +58,29 @@ class RagService:
 
         chunks = self.splitter.split_documents(processed_documents)
         try:
+            # Parallelize embedding operations for better performance
+            async def create_point_struct(i: int, chunk) -> models.PointStruct:
+                vector = await self.embedding_provider.embed_query(chunk.page_content)
+                return models.PointStruct(
+                    id=i,
+                    vector=vector,
+                    payload=asdict(
+                        Chunk(
+                            content=chunk.page_content,
+                            file_name=chunk.metadata.get("file_name") or "",
+                            file_id=chunk.metadata.get("file_id") or "",
+                        )
+                    ),
+                )
+            
+            # Create all point structs in parallel
+            points = await asyncio.gather(*[
+                create_point_struct(i, chunk) for i, chunk in enumerate(chunks)
+            ])
+            
             await self.client.upsert(
                 collection_name=collection_name,
-                points=[
-                    models.PointStruct(
-                        id=i,
-                        vector=await self.embedding_provider.embed_query(chunk.page_content),
-                        payload=asdict(
-                            Chunk(
-                                content=chunk.page_content,
-                                file_name=chunk.metadata.get("file_name") or "",
-                                file_id=chunk.metadata.get("file_id") or "",
-                            )
-                        ),
-                    )
-                    for i, chunk in enumerate(chunks)
-                ],
+                points=points,
             )
             logger.info(f"Successfully upserted {len(chunks)} chunks")
         except Exception as e:
@@ -77,7 +89,7 @@ class RagService:
             logger.error(f"Error upserting chunks: {e}")
             raise e
 
-    async def retrieve_chunks(self, tender_id: uuid.UUID, query: str, top_k: int = 10):
+    async def retrieve_chunks(self, tender_id: uuid.UUID, query: str, top_k: int = DEFAULT_TOP_K):
         query_vector = await self.embedding_provider.embed_query(query)
         res = await self.client.search(
             collection_name=str(tender_id),
@@ -96,7 +108,7 @@ class RagService:
 
         return chunks
 
-    async def retrieve_chunks_global(self, tender_ids: List[uuid.UUID], query: str, top_k: int = 10):
+    async def retrieve_chunks_global(self, tender_ids: List[uuid.UUID], query: str, top_k: int = DEFAULT_TOP_K):
         """
         Retrieve chunks from multiple tender collections in parallel and merge results.
         

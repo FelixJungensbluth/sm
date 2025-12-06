@@ -83,26 +83,137 @@ export interface BaseInformation {
 
 /** Body_create_tender */
 export interface BodyCreateTender {
-  /** Files */
+  /**
+   * Files
+   * Files to upload for the tender
+   */
   files: File[];
-  /** Name */
+  /**
+   * Name
+   * Name/title of the tender
+   */
   name: string;
 }
 
-/** Document */
-export interface Document {
+/** ChatConversation */
+export interface ChatConversation {
   /**
    * Id
    * @format uuid
    */
   id: string;
-  /** Name */
-  name: string;
+  /** Title */
+  title: string;
+  /** Messages */
+  messages: ChatMessage[];
+  /** Tender Id */
+  tender_id?: string | null;
   /**
-   * Tender Id
+   * Context Type
+   * @default "none"
+   */
+  context_type?: string;
+  /**
+   * Created At
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Updated At
+   * @format date-time
+   */
+  updated_at: string;
+}
+
+/** ChatMessage */
+export interface ChatMessage {
+  /**
+   * Id
    * @format uuid
    */
+  id: string;
+  /** Role */
+  role: string;
+  /** Content */
+  content: string;
+  /**
+   * Timestamp
+   * @format date-time
+   */
+  timestamp: string;
+}
+
+/** ChatRequest */
+export interface ChatRequest {
+  /** Message */
+  message: string;
+  /** Conversation Id */
+  conversation_id?: string | null;
+  /** Tender Id */
+  tender_id?: string | null;
+  /**
+   * Context Type
+   * @default "none"
+   */
+  context_type?: string;
+}
+
+/**
+ * ChatTenderListResponse
+ * Response model for chat tender list.
+ */
+export interface ChatTenderListResponse {
+  /** Tenders */
+  tenders: Record<string, any>[];
+}
+
+/**
+ * ConversationListResponse
+ * Response model for a list of conversations.
+ */
+export interface ConversationListResponse {
+  /** Conversations */
+  conversations: ChatConversation[];
+}
+
+/**
+ * ConversationResponse
+ * Response model for a single conversation.
+ */
+export interface ConversationResponse {
+  conversation: ChatConversation;
+}
+
+/**
+ * CreateConversationResponse
+ * Response model for conversation creation.
+ */
+export interface CreateConversationResponse {
+  conversation: ChatConversation;
+}
+
+/**
+ * CreateTenderResponse
+ * Response model for tender creation.
+ */
+export interface CreateTenderResponse {
+  /** Tender Id */
   tender_id: string;
+  /** Job Id */
+  job_id: string;
+  /** Status */
+  status: string;
+}
+
+/**
+ * DeleteConversationResponse
+ * Response model for deleting a conversation.
+ */
+export interface DeleteConversationResponse {
+  /** Success */
+  success: boolean;
+  /** Message */
+  message: string;
 }
 
 /** HTTPValidationError */
@@ -111,7 +222,19 @@ export interface HTTPValidationError {
   detail?: ValidationError[];
 }
 
-/** JobResponse */
+/**
+ * JobListResponse
+ * Response model for a list of jobs.
+ */
+export interface JobListResponse {
+  /** Jobs */
+  jobs: TenderJob[];
+}
+
+/**
+ * JobResponse
+ * Response model for job operations.
+ */
 export interface JobResponse {
   /** Job Id */
   job_id: string;
@@ -148,6 +271,15 @@ export interface Requirement {
   tender_id: string;
 }
 
+/**
+ * RequirementListResponse
+ * Response model for a list of requirements.
+ */
+export interface RequirementListResponse {
+  /** Requirements */
+  requirements: Requirement[];
+}
+
 /** StepStatus */
 export interface StepStatus {
   /** Name */
@@ -167,6 +299,8 @@ export interface Tender {
   id: string;
   /** Title */
   title: string;
+  /** Generated Title */
+  generated_title: string;
   /** Description */
   description: string;
   /** Base Information */
@@ -182,6 +316,15 @@ export interface Tender {
    * @format date-time
    */
   updated_at: string;
+}
+
+/**
+ * TenderDocumentListResponse
+ * Response model for tender documents.
+ */
+export interface TenderDocumentListResponse {
+  /** Documents */
+  documents: Record<string, any>[];
 }
 
 /**
@@ -231,15 +374,67 @@ export interface TenderJob {
   updated_at: string;
 }
 
+/**
+ * TenderListResponse
+ * Response model for a list of tenders.
+ */
+export interface TenderListResponse {
+  /** Tenders */
+  tenders: Tender[];
+}
+
+/**
+ * TenderResponse
+ * Response model for a single tender.
+ */
+export interface TenderResponse {
+  tender: Tender;
+}
+
 /** TenderUpdate */
 export interface TenderUpdate {
   /** Title */
   title?: string | null;
+  /** Generated Title */
+  generated_title?: string | null;
   /** Description */
   description?: string | null;
   /** Base Information */
   base_information?: BaseInformation[] | null;
   status?: TenderReviewStatus | null;
+}
+
+/**
+ * UpdateConversationTitleResponse
+ * Response model for updating conversation title.
+ */
+export interface UpdateConversationTitleResponse {
+  /** Success */
+  success: boolean;
+  /** Message */
+  message: string;
+}
+
+/**
+ * UpdateRequirementStatusResponse
+ * Response model for updating requirement status.
+ */
+export interface UpdateRequirementStatusResponse {
+  /** Success */
+  success: boolean;
+  /** Message */
+  message: string;
+}
+
+/**
+ * UpdateTenderBaseInformationStatusResponse
+ * Response model for updating tender base information status.
+ */
+export interface UpdateTenderBaseInformationStatusResponse {
+  /** Success */
+  success: boolean;
+  /** Message */
+  message: string;
 }
 
 /** ValidationError */
@@ -508,23 +703,42 @@ export class HttpClient<SecurityDataType = unknown> {
 }
 
 /**
- * @title FastAPI
+ * @title SkillMatch API
  * @version 0.1.0
+ *
+ * API for managing tenders, requirements, and chat conversations
  */
 export class Api<
   SecurityDataType extends unknown,
 > extends HttpClient<SecurityDataType> {
+  health = {
+    /**
+     * @description Health check endpoint to verify the API is running.
+     *
+     * @tags health
+     * @name HealthCheckHealthGet
+     * @summary Health check endpoint
+     * @request GET:/health
+     */
+    healthCheckHealthGet: (params: RequestParams = {}) =>
+      this.request<any, any>({
+        path: `/health`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+  };
   tenders = {
     /**
-     * No description
+     * @description Retrieve all tenders that have completed processing.
      *
      * @tags tenders
      * @name GetTenders
-     * @summary Get Tenders
+     * @summary Get all completed tenders
      * @request GET:/tenders/
      */
     getTenders: (params: RequestParams = {}) =>
-      this.request<Tender[], void>({
+      this.request<TenderListResponse, void>({
         path: `/tenders/`,
         method: "GET",
         format: "json",
@@ -532,15 +746,15 @@ export class Api<
       }),
 
     /**
-     * No description
+     * @description Create a new tender with uploaded files. Files are uploaded to MinIO and a processing job is queued.
      *
      * @tags tenders
      * @name CreateTender
-     * @summary Create Tenders
+     * @summary Create a new tender
      * @request POST:/tenders/
      */
     createTender: (data: BodyCreateTender, params: RequestParams = {}) =>
-      this.request<any, void | HTTPValidationError>({
+      this.request<CreateTenderResponse, void | HTTPValidationError>({
         path: `/tenders/`,
         method: "POST",
         body: data,
@@ -550,15 +764,15 @@ export class Api<
       }),
 
     /**
-     * No description
+     * @description Retrieve a specific tender by its ID.
      *
      * @tags tenders
      * @name GetTenderById
-     * @summary Get Tender By Id
+     * @summary Get tender by ID
      * @request GET:/tenders/{tender_id}
      */
     getTenderById: (tenderId: string, params: RequestParams = {}) =>
-      this.request<Tender | null, void | HTTPValidationError>({
+      this.request<TenderResponse, void | HTTPValidationError>({
         path: `/tenders/${tenderId}`,
         method: "GET",
         format: "json",
@@ -566,27 +780,26 @@ export class Api<
       }),
 
     /**
-     * No description
+     * @description Delete a tender by its ID.
      *
      * @tags tenders
      * @name DeleteTender
-     * @summary Delete Tender
+     * @summary Delete a tender
      * @request DELETE:/tenders/{tender_id}
      */
     deleteTender: (tenderId: string, params: RequestParams = {}) =>
-      this.request<any, void | HTTPValidationError>({
+      this.request<void, void | HTTPValidationError>({
         path: `/tenders/${tenderId}`,
         method: "DELETE",
-        format: "json",
         ...params,
       }),
 
     /**
-     * No description
+     * @description Update tender fields such as title, description, status, or base information.
      *
      * @tags tenders
      * @name UpdateTender
-     * @summary Update Tender
+     * @summary Update a tender
      * @request PUT:/tenders/{tender_id}
      */
     updateTender: (
@@ -594,7 +807,7 @@ export class Api<
       data: TenderUpdate,
       params: RequestParams = {},
     ) =>
-      this.request<any, void | HTTPValidationError>({
+      this.request<TenderResponse, void | HTTPValidationError>({
         path: `/tenders/${tenderId}`,
         method: "PUT",
         body: data,
@@ -604,15 +817,15 @@ export class Api<
       }),
 
     /**
-     * No description
+     * @description Retrieve all documents associated with a tender.
      *
      * @tags tenders
      * @name GetTenderDocuments
-     * @summary Get Tender Documents
+     * @summary Get tender documents
      * @request GET:/tenders/{tender_id}/documents
      */
     getTenderDocuments: (tenderId: string, params: RequestParams = {}) =>
-      this.request<Document[], void | HTTPValidationError>({
+      this.request<TenderDocumentListResponse, void | HTTPValidationError>({
         path: `/tenders/${tenderId}/documents`,
         method: "GET",
         format: "json",
@@ -620,23 +833,30 @@ export class Api<
       }),
 
     /**
-     * No description
+     * @description Update the status of a specific base information field for a tender.
      *
      * @tags tenders
      * @name UpdateTenderBaseInformationStatus
-     * @summary Update Tender Base Information Status
+     * @summary Update tender base information status
      * @request PUT:/tenders/{tender_id}/base_information_status
      */
     updateTenderBaseInformationStatus: (
       tenderId: string,
       query: {
-        /** Field Name */
+        /**
+         * Field Name
+         * Name of the base information field to update
+         */
         field_name: string;
+        /** New status for the field */
         base_information_status: BaseInformationStatus;
       },
       params: RequestParams = {},
     ) =>
-      this.request<any, void | HTTPValidationError>({
+      this.request<
+        UpdateTenderBaseInformationStatusResponse,
+        void | HTTPValidationError
+      >({
         path: `/tenders/${tenderId}/base_information_status`,
         method: "PUT",
         query: query,
@@ -646,15 +866,15 @@ export class Api<
   };
   jobs = {
     /**
-     * @description Get all tender jobs that are not done.
+     * @description Retrieve all tender processing jobs that are not yet completed.
      *
      * @tags jobs
      * @name GetJobsNotDone
-     * @summary Get Jobs Not Done Endpoint
+     * @summary Get all incomplete jobs
      * @request GET:/jobs/
      */
     getJobsNotDone: (params: RequestParams = {}) =>
-      this.request<TenderJob[], void>({
+      this.request<JobListResponse, void>({
         path: `/jobs/`,
         method: "GET",
         format: "json",
@@ -662,11 +882,11 @@ export class Api<
       }),
 
     /**
-     * @description Restart a job from a specific step (default: step 0, beginning).
+     * @description Restart a tender processing job from a specific step. Default is to restart from the beginning (step 0).
      *
      * @tags jobs
      * @name RestartJob
-     * @summary Restart Job Endpoint
+     * @summary Restart a job
      * @request POST:/jobs/{job_id}/restart
      */
     restartJob: (
@@ -691,11 +911,11 @@ export class Api<
       }),
 
     /**
-     * @description Cancel a job.
+     * @description Cancel a tender processing job.
      *
      * @tags jobs
      * @name CancelJob
-     * @summary Cancel Job Endpoint
+     * @summary Cancel a job
      * @request POST:/jobs/{job_id}/cancel
      */
     cancelJob: (jobId: string, params: RequestParams = {}) =>
@@ -708,15 +928,15 @@ export class Api<
   };
   requirements = {
     /**
-     * No description
+     * @description Retrieve all requirements associated with a specific tender.
      *
      * @tags requirements
      * @name GetRequirementsForTender
-     * @summary Get Requirements For Tender
+     * @summary Get requirements for a tender
      * @request GET:/requirements/{tender_id}
      */
     getRequirementsForTender: (tenderId: string, params: RequestParams = {}) =>
-      this.request<Requirement[], void | HTTPValidationError>({
+      this.request<RequirementListResponse, void | HTTPValidationError>({
         path: `/requirements/${tenderId}`,
         method: "GET",
         format: "json",
@@ -724,11 +944,11 @@ export class Api<
       }),
 
     /**
-     * No description
+     * @description Update the status of a specific requirement (e.g., approved, rejected, pending).
      *
      * @tags requirements
      * @name UpdateRequirementStatus
-     * @summary Update Requirement Status
+     * @summary Update requirement status
      * @request PUT:/requirements/{requirement_id}/status
      */
     updateRequirementStatus: (
@@ -738,10 +958,161 @@ export class Api<
       },
       params: RequestParams = {},
     ) =>
-      this.request<any, void | HTTPValidationError>({
-        path: `/requirements/${requirementId}/status`,
-        method: "PUT",
+      this.request<UpdateRequirementStatusResponse, void | HTTPValidationError>(
+        {
+          path: `/requirements/${requirementId}/status`,
+          method: "PUT",
+          query: query,
+          format: "json",
+          ...params,
+        },
+      ),
+  };
+  chat = {
+    /**
+     * @description Create a new chat conversation with an optional tender context.
+     *
+     * @tags chat
+     * @name CreateConversation
+     * @summary Create a new conversation
+     * @request POST:/chat/conversations
+     */
+    createConversation: (
+      query: {
+        /**
+         * Title
+         * Title of the conversation
+         */
+        title: string;
+        /**
+         * Tender Id
+         * Optional tender ID for context
+         */
+        tender_id?: string | null;
+        /**
+         * Context Type
+         * Context type: 'none', 'global', or 'tender'
+         * @default "none"
+         */
+        context_type?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<CreateConversationResponse, void | HTTPValidationError>({
+        path: `/chat/conversations`,
+        method: "POST",
         query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve all chat conversations, ordered by most recently updated.
+     *
+     * @tags chat
+     * @name GetConversations
+     * @summary Get all conversations
+     * @request GET:/chat/conversations
+     */
+    getConversations: (params: RequestParams = {}) =>
+      this.request<ConversationListResponse, void>({
+        path: `/chat/conversations`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve a specific conversation with all its messages.
+     *
+     * @tags chat
+     * @name GetConversation
+     * @summary Get a conversation by ID
+     * @request GET:/chat/conversations/{conversation_id}
+     */
+    getConversation: (conversationId: string, params: RequestParams = {}) =>
+      this.request<ConversationResponse, void | HTTPValidationError>({
+        path: `/chat/conversations/${conversationId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Delete a conversation and all its messages.
+     *
+     * @tags chat
+     * @name DeleteConversation
+     * @summary Delete a conversation
+     * @request DELETE:/chat/conversations/{conversation_id}
+     */
+    deleteConversation: (conversationId: string, params: RequestParams = {}) =>
+      this.request<DeleteConversationResponse, void | HTTPValidationError>({
+        path: `/chat/conversations/${conversationId}`,
+        method: "DELETE",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update the title of a conversation.
+     *
+     * @tags chat
+     * @name UpdateConversationTitle
+     * @summary Update conversation title
+     * @request PUT:/chat/conversations/{conversation_id}/title
+     */
+    updateConversationTitle: (
+      conversationId: string,
+      query: {
+        /**
+         * Title
+         * New title for the conversation
+         */
+        title: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<UpdateConversationTitleResponse, void | HTTPValidationError>(
+        {
+          path: `/chat/conversations/${conversationId}/title`,
+          method: "PUT",
+          query: query,
+          format: "json",
+          ...params,
+        },
+      ),
+
+    /**
+     * @description Send a message in a conversation and stream the AI response. Creates a new conversation if conversation_id is not provided.
+     *
+     * @tags chat
+     * @name SendMessage
+     * @summary Send a chat message
+     * @request POST:/chat/messages
+     */
+    sendMessage: (data: ChatRequest, params: RequestParams = {}) =>
+      this.request<any, void | HTTPValidationError>({
+        path: `/chat/messages`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve a simplified list of tenders for use in chat context selection.
+     *
+     * @tags chat
+     * @name GetChatTenders
+     * @summary Get list of tenders for chat context
+     * @request GET:/chat/tenders
+     */
+    getChatTenders: (params: RequestParams = {}) =>
+      this.request<ChatTenderListResponse, void>({
+        path: `/chat/tenders`,
+        method: "GET",
         format: "json",
         ...params,
       }),

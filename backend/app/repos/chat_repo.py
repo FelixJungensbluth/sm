@@ -10,6 +10,13 @@ from app.models.chat import ChatConversation, ChatMessage
 class ChatRepo:
     def __init__(self, client: MongoClient):
         self.collection = client["skillMatch"]["chat_conversations"]
+        self._ensure_indexes()
+    
+    def _ensure_indexes(self) -> None:
+        """Create indexes for frequently queried fields."""
+        self.collection.create_index("id", unique=True, name="conversation_id_idx")
+        self.collection.create_index("updated_at", name="conversation_updated_at_idx")
+        self.collection.create_index("tender_id", name="conversation_tender_id_idx")
 
     def create_conversation(self, conversation: ChatConversation) -> ChatConversation:
         doc = self._conversation_to_doc(conversation)
@@ -24,8 +31,11 @@ class ChatRepo:
             if doc:
                 return self._doc_to_conversation(doc)
             return None
+        except (ValueError, TypeError) as e:
+            logger.error(f"Error parsing conversation_id {conversation_id}: {e}")
+            return None
         except Exception as e:
-            logger.error(f"Error getting conversation {conversation_id}: {e}")
+            logger.error(f"Unexpected error getting conversation {conversation_id}: {e}")
             return None
 
     def get_conversations(self) -> List[ChatConversation]:
@@ -36,7 +46,7 @@ class ChatRepo:
                 if conversation:
                     conversations.append(conversation)
         except Exception as e:
-            logger.error(f"Error getting conversations: {e}")
+            logger.error(f"Unexpected error getting conversations: {e}")
         return conversations
 
     def add_message(self, conversation_id: uuid.UUID, message: ChatMessage) -> bool:
@@ -50,7 +60,7 @@ class ChatRepo:
             )
             return result.matched_count > 0
         except Exception as e:
-            logger.error(f"Error adding message to conversation {conversation_id}: {e}")
+            logger.error(f"Unexpected error adding message to conversation {conversation_id}: {e}")
             return False
 
     def update_conversation_title(self, conversation_id: uuid.UUID, title: str) -> bool:
@@ -66,7 +76,7 @@ class ChatRepo:
             )
             return result.matched_count > 0
         except Exception as e:
-            logger.error(f"Error updating conversation title {conversation_id}: {e}")
+            logger.error(f"Unexpected error updating conversation title {conversation_id}: {e}")
             return False
 
     def delete_conversation(self, conversation_id: uuid.UUID) -> bool:
@@ -74,7 +84,7 @@ class ChatRepo:
             result = self.collection.delete_one({"id": str(conversation_id)})
             return result.deleted_count > 0
         except Exception as e:
-            logger.error(f"Error deleting conversation {conversation_id}: {e}")
+            logger.error(f"Unexpected error deleting conversation {conversation_id}: {e}")
             return False
 
     def _conversation_to_doc(self, conversation: ChatConversation) -> dict:
