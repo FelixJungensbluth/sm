@@ -38,6 +38,17 @@ def get_llm_provider(
     api_url = provider_config.get("api_url")
     model_configs = provider_config.get("models")
     
+    # Extract global Lens Loop configuration
+    loop_config = config.get("loop", {})
+    loop_port = loop_config.get("port", 31300)
+    
+    # Provider-specific Loop usage flag
+    use_loop = provider_config.get("use_loop", False)
+    
+    # Ollama-specific config
+    ollama_host = provider_config.get("ollama_host", "localhost")
+    ollama_port = provider_config.get("ollama_port", 11434)
+    
     provider_lower = provider.lower()
     match provider_lower:
         case "ollama":
@@ -46,6 +57,10 @@ def get_llm_provider(
                 model_name=model,
                 api_url=api_url,
                 model_configs=model_configs,
+                use_loop=use_loop,
+                loop_port=loop_port,
+                ollama_host=ollama_host,
+                ollama_port=ollama_port,
             )
         case "openai":
             return OpenAi(
@@ -53,6 +68,8 @@ def get_llm_provider(
                 model_name=model,
                 api_url=api_url,
                 model_configs=model_configs,
+                use_loop=use_loop,
+                loop_port=loop_port,
             )
         case _:
             raise ValueError(f"Unknown LLM provider '{provider}'")      

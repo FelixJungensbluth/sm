@@ -14,7 +14,7 @@ DEFAULT_OLLAMA_MODELS: Dict[str, Dict[str, float]] = {
     "llama3.2": {"rpm": 100.0, "tpm": 100000.0},
 }
 
-DEFAULT_API_URL = "http://localhost:11434/api/chat"
+DEFAULT_API_URL = "http://localhost:11434/v1/chat/completions"
 PROVIDER_NAME = "ollama"
 
 
@@ -25,11 +25,27 @@ class Ollama(BaseLLM):
         model_name: str,
         api_url: Optional[str] = None,
         model_configs: Optional[Dict[str, Dict[str, float]]] = None,
+        use_loop: bool = False,
+        loop_port: int = 31300,
+        ollama_host: str = "localhost",
+        ollama_port: int = 11434,
     ):
         super().__init__(settings, model_name)
 
         self._model_configs = model_configs or DEFAULT_OLLAMA_MODELS
-        self._api_url = api_url or DEFAULT_API_URL
+        
+        # Build API URL based on configuration
+        if api_url:
+            # Explicit URL provided, use it
+            self._api_url = api_url
+        elif use_loop:
+            # Use Lens Loop proxy
+            self._api_url = f"http://localhost:{loop_port}/openai/http/{ollama_host}:{ollama_port}/v1/chat/completions"
+            logger.info(f"Using Lens Loop proxy at {self._api_url}")
+        else:
+            # Direct connection to Ollama
+            self._api_url = f"http://{ollama_host}:{ollama_port}/v1/chat/completions"
+            logger.info(f"Connecting directly to Ollama at {self._api_url}")
 
         if model_name not in self._model_configs:
             raise ValueError("Unknown model")
@@ -48,19 +64,18 @@ class Ollama(BaseLLM):
         return await self._processor.process_requests(requests, max_attempts)
 
     def create_request(self, requests: List[LlmRequest]) -> List[dict]:
+        # OpenAI-compatible request format
         return [
             {
                 "model": self._model_name,
                 "messages": [{"role": r.role, "content": r.message}],
-                "stream": False,
-                "think": False,
-                "level": "medium"
             }
             for r in requests
         ]
 
     def get_output(self, response: dict, only_json: bool = False) -> str:
-        content = response["response"]["message"]["content"]
+        # OpenAI-compatible response structure: {"choices": [{"message": {"content": "..."}}]}
+        content = response["response"]["choices"][0]["message"]["content"]
         
         if only_json:
             return extract_json_from_content(content)
@@ -98,21 +113,26 @@ class Ollama(BaseLLM):
                         
                         try:
                             line_text = line.decode("utf-8").strip()
-                            if not line_text:
+                            if not line_text or not line_text.startswith("data: "):
                                 continue
                             
-                            # Ollama streams JSON lines
-                            data = json.loads(line_text)
+                            # Remove "data: " prefix (OpenAI SSE format)
+                            data_str = line_text[6:]
                             
-                            # Check if this is the final message
-                            if data.get("done", False):
+                            # Check for [DONE] marker
+                            if data_str == "[DONE]":
                                 break
                             
-                            # Extract content from message
-                            message = data.get("message", {})
-                            content = message.get("content", "")
-                            if content:
-                                yield content
+                            # Parse JSON
+                            data = json.loads(data_str)
+                            
+                            # Extract content from choices (OpenAI format)
+                            choices = data.get("choices", [])
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                content = delta.get("content", "")
+                                if content:
+                                    yield content
                         except json.JSONDecodeError:
                             continue
                         except Exception as e:

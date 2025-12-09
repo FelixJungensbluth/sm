@@ -1,12 +1,12 @@
-from minio.error import S3Error
-from app.models.document import ProcessedDocument
-from app.models.document import Document
 import uuid
 from io import BytesIO
 
 from fastapi import UploadFile
-from minio import Minio
+from minio.error import S3Error
+
 from app.config.settings import SettingsDep
+from app.models.document import Document, ProcessedDocument
+from minio import Minio
 
 
 def _get_tender_prefix(tender_id: uuid.UUID) -> str:
@@ -25,9 +25,12 @@ class MinioService:
             settings.MINIO_ENDPOINT,
             settings.MINIO_ACCESS_KEY,
             settings.MINIO_SECRET_KEY,
+            secure=False,
         )
 
-    def upload_tender_file(self, tender_id: uuid.UUID, file: UploadFile, file_id: uuid.UUID):
+    def upload_tender_file(
+        self, tender_id: uuid.UUID, file: UploadFile, file_id: uuid.UUID
+    ):
         file_size = file.size
         content_type = file.content_type
 
@@ -75,13 +78,13 @@ class MinioService:
                 yield obj.object_name, response.read()
             finally:
                 response.close()
-    
+
     def upload_processed_file(
-            self,
-            tender_id: uuid.UUID,
-            document_name: str,
-            content: str,
-            content_type: str = "text/plain",
+        self,
+        tender_id: uuid.UUID,
+        document_name: str,
+        content: str,
+        content_type: str = "text/plain",
     ) -> None:
         object_name = f"{_get_tender_prefix(tender_id)}processed/{document_name}"
 
@@ -95,8 +98,9 @@ class MinioService:
             self._bucket, object_name, data, file_size, content_type
         )
 
-    
-    def get_processed_files(self, tender_documents: list[Document]) -> list[ProcessedDocument]:
+    def get_processed_files(
+        self, tender_documents: list[Document]
+    ) -> list[ProcessedDocument]:
         docs: list[ProcessedDocument] = []
 
         for doc in tender_documents:

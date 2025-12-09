@@ -192,8 +192,8 @@ export function JobStatusView() {
                           <div className="flex items-center gap-2">
                             <span>Current Step:</span>
                             <span className="font-medium">{currentStep.name}</span>
-                            {currentStep.status === 'error' && currentStep.last_error && (
-                              <span className="text-red-500 text-xs">({currentStep.last_error})</span>
+                            {currentStep.status === 'error' && (
+                              <span className="text-red-500 text-xs">(An error occurred)</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">

@@ -29,11 +29,25 @@ class OpenAi(BaseLLM):
         model_name: str,
         api_url: Optional[str] = None,
         model_configs: Optional[Dict[str, Dict[str, float]]] = None,
+        use_loop: bool = False,
+        loop_port: int = 31300,
     ):
         super().__init__(settings, model_name)
         
         self._model_configs = model_configs or DEFAULT_OPENAI_MODELS
-        self._api_url = api_url or DEFAULT_API_URL
+        
+        # Build API URL based on configuration
+        if api_url:
+            # Explicit URL provided, use it
+            self._api_url = api_url
+        elif use_loop:
+            # Use Lens Loop proxy for OpenAI
+            self._api_url = f"http://localhost:{loop_port}/openai/v1/chat/completions"
+            logger.info(f"Using Lens Loop proxy for OpenAI at {self._api_url}")
+        else:
+            # Direct connection to OpenAI
+            self._api_url = DEFAULT_API_URL
+            logger.info(f"Connecting directly to OpenAI at {self._api_url}")
 
         if model_name not in self._model_configs:
             raise ValueError("Unknown model")

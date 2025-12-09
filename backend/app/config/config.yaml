@@ -1,10 +1,14 @@
+loop:
+  port: 31300  
+
 llm:
   provider: "ollama"
   default_model: "gpt-oss"
-  
+
   providers:
     openai:
-      api_url: "https://api.openai.com/v1/chat/completions"
+      use_loop: false  
+      api_url: "https://api.openai.com/v1/chat/completions"  
       models:
         gpt-4o:
           rpm: 2.0
@@ -21,9 +25,12 @@ llm:
         gpt-4.1-mini:
           rpm: 10000.0
           tpm: 1000000.0
-    
+
     ollama:
-      api_url: "http://localhost:11434/api/chat"
+      use_loop: true  
+      ollama_host: "localhost"  
+      ollama_port: 11434  
+      api_url: null  
       models:
         llama3.2:
           rpm: 100.0
