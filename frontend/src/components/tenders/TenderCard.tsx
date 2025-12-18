@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useMemo, memo } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
 import { Calendar, Tag } from 'lucide-react';
 import type { Tender } from '@/services/api/api';
-import type { BaseInformation } from '@/services/api/api';
+import type { ExtractedData } from '@/services/api/api';
 
 interface TenderCardProps {
   tender: Tender;
@@ -11,7 +11,7 @@ interface TenderCardProps {
   onViewDetails: (tender: Tender) => void;
   isOpen?: boolean;
   projectId: string;
-  baseInformation?: BaseInformation[];
+  baseInformation?: ExtractedData[];
 }
 
 export const TenderCard = memo(function TenderCard({

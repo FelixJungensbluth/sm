@@ -4,7 +4,8 @@ from typing import Optional
 import uuid
 from pydantic import BaseModel
 
-from app.models.base_information import BaseInformation
+from app.models.extracted_data import ExtractedData
+from app.models.document import Document
 
 
 class TenderReviewStatus(str, Enum):
@@ -28,7 +29,8 @@ class Tender(BaseModel):
     title: str
     generated_title: str
     description: str
-    base_information: list[BaseInformation]
+    base_information: list[ExtractedData]
+    exclusion_criteria: list[ExtractedData]
     status: TenderReviewStatus
     created_at: datetime
     updated_at: datetime
@@ -41,6 +43,7 @@ class Tender(BaseModel):
             generated_title="",
             description="",
             base_information=[],
+            exclusion_criteria=[],
             status=TenderReviewStatus.in_review,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
@@ -51,7 +54,8 @@ class TenderUpdate(BaseModel):
     title: Optional[str] = None
     generated_title: Optional[str] = None
     description: Optional[str] = None
-    base_information: Optional[list[BaseInformation]] = None
+    base_information: Optional[list[ExtractedData]] = None
+    exclusion_criteria: Optional[list[ExtractedData]] = None
     status: Optional[TenderReviewStatus] = None
 
 
@@ -74,7 +78,7 @@ class TenderListResponse(BaseModel):
 
 class TenderDocumentListResponse(BaseModel):
     """Response model for tender documents."""
-    documents: list[dict]  # Using dict to avoid circular import with Document
+    documents: list[Document]
 
 
 class UpdateTenderBaseInformationStatusResponse(BaseModel):

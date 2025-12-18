@@ -1,4 +1,4 @@
-import type { TenderStatus, Tender } from "@/services/api/api";
+import type { TenderReviewStatus, Tender, ExtractedData } from "@/services/api/api";
 
 export enum ThemeMode {
   LIGHT = "LIGHT",
@@ -6,14 +6,17 @@ export enum ThemeMode {
   SYSTEM = "SYSTEM",
 }
 
+// Type alias for TenderReviewStatus
+export type TenderStatus = TenderReviewStatus;
+
 // Re-export Tender types for convenience
-export type { Tender, TenderStatus, BaseInformation } from "@/services/api/api";
+export type { Tender, ExtractedData };
 export type TenderWithAttemptStatus = Tender;
 
 export const TENDER_STATUSES: TenderStatus[] = [
   'In Prüfung',
   'In Ausarbeitung',
-  'Uninteressant',
   'Abgeschickt',
   'Abgelehnt',
+  'Uninteressant',
 ];

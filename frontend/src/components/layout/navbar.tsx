@@ -1,5 +1,4 @@
 import { Link, useSearchParams, useLocation } from 'react-router-dom';
-import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Settings,
@@ -9,25 +8,15 @@ import {
   MessageSquare,
 } from 'lucide-react';
 
-import { SearchBar } from '@/components/search-bar';
-import { useSearch } from '@/contexts/search-context';
 import { JobStatusView } from '@/components/jobs/JobStatusView';
 
 
 export function Navbar() {
-  const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const isTasksPage = location.pathname.includes('/tasks') || location.pathname === '/';
 
-  const setSearchBarRef = useCallback(
-    (node: HTMLInputElement | null) => {
-      registerInputRef(node);
-    },
-    [registerInputRef]
-  );
-
-  const handleCreateTask = useCallback(() => {
+  const handleCreateTask = () => {
     const isTendersPage = location.pathname.includes('/tasks') || 
                           location.pathname.includes('/tenders') || 
                           location.pathname === '/';
@@ -35,15 +24,15 @@ export function Navbar() {
       ? 'open-create-tender-dialog' 
       : 'open-create-task-dialog';
     window.dispatchEvent(new CustomEvent(eventName));
-  }, [location.pathname]);
+  };
 
   const currentView = searchParams.get('viewType') || 'kanban';
-  const handleToggleView = useCallback(() => {
+  const handleToggleView = () => {
     const newView = currentView === 'kanban' ? 'table' : 'kanban';
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set('viewType', newView);
     setSearchParams(newSearchParams, { replace: true });
-  }, [currentView, searchParams, setSearchParams]);
+  };
 
   return (
     <div className="border-b bg-background">
@@ -55,17 +44,6 @@ export function Navbar() {
             </Link>
           </div>
           
-          <div className="flex-1 flex justify-center">
-            <SearchBar
-              ref={setSearchBarRef}
-              className="hidden sm:flex"
-              value={query}
-              onChange={setQuery}
-              disabled={!active}
-              onClear={clear}
-            />
-          </div>
-
           <div className="flex-1 flex justify-end">
             {isTasksPage && (
               <Button

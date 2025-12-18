@@ -29,7 +29,6 @@ const getValidUpdates = (data: TenderUpdate & { order?: number }): Partial<Tende
   if (data.title != null) updates.title = data.title;
   if (data.description != null) updates.description = data.description;
   if (data.base_information != null) updates.base_information = data.base_information;
-  // Support order field for drag & drop sorting (even if backend doesn't support it yet)
   if (data.order != null && typeof data.order === 'number') {
     (updates as any).order = data.order;
   }

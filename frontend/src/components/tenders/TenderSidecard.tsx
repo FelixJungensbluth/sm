@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useUpdateTender, useDeleteTender } from "@/hooks/use-tenders";
 import { statusLabels, statusBoardColors } from "@/utils/status-labels";
-import type { Tender, TenderReviewStatus, BaseInformation } from "@/services/api/api";
+import type { Tender, TenderReviewStatus, ExtractedData } from "@/services/api/api";
 import { TENDER_STATUSES } from "@/lib/types";
 import { useTenderNavigation } from "@/lib/navigation-helpers";
 import { toast } from "sonner";
@@ -14,6 +14,8 @@ import { DeleteConfirmationDialog } from "@/components/shared/DeleteConfirmation
 import { EditableTitle } from "@/components/shared/EditableTitle";
 import { EditableDescription } from "@/components/shared/EditableDescription";
 import { BaseInformationEditor } from "@/components/shared/BaseInformationEditor";
+import { BaseInformationCardList } from "@/components/shared/BaseInformationCardList";
+import { BaseInformationGrid } from "@/components/shared/BaseInformationGrid";
 import { TenderActionButtons } from "@/components/shared/TenderActionButtons";
 import { SaveCancelFooter } from "@/components/shared/SaveCancelFooter";
 
@@ -31,8 +33,11 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
   const [title, setTitle] = useState(tender.title);
   const [description, setDescription] = useState(tender.description);
   const [status, setStatus] = useState<TenderReviewStatus>(tender.status);
-  const [baseInformation, setBaseInformation] = useState<BaseInformation[]>(
+  const [baseInformation, setBaseInformation] = useState<ExtractedData[]>(
     tender.base_information || []
+  );
+  const [exclusionCriteria, setExclusionCriteria] = useState<ExtractedData[]>(
+    tender.exclusion_criteria || []
   );
 
   // Edit mode state
@@ -51,6 +56,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
     setDescription(tender.description);
     setStatus(tender.status);
     setBaseInformation(tender.base_information || []);
+    setExclusionCriteria(tender.exclusion_criteria || []);
     setHasChanges(false);
   }, [tender]);
 
@@ -60,8 +66,9 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
     const hasDescriptionChange = description !== tender.description;
     const hasStatusChange = status !== tender.status;
     const hasBaseInfoChange = JSON.stringify(baseInformation) !== JSON.stringify(tender.base_information || []);
+    const hasExclusionCriteriaChange = JSON.stringify(exclusionCriteria) !== JSON.stringify(tender.exclusion_criteria || []);
     
-    setHasChanges(hasTitleChange || hasDescriptionChange || hasStatusChange || hasBaseInfoChange);
+    setHasChanges(hasTitleChange || hasDescriptionChange || hasStatusChange || hasBaseInfoChange || hasExclusionCriteriaChange);
   }, [title, description, status, baseInformation, tender]);
 
   const handleOpenDetailPage = () => {
@@ -96,6 +103,9 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
           base_information: JSON.stringify(baseInformation) !== JSON.stringify(tender.base_information || [])
             ? baseInformation
             : undefined,
+          exclusion_criteria: JSON.stringify(exclusionCriteria) !== JSON.stringify(tender.exclusion_criteria || [])
+            ? exclusionCriteria
+            : undefined,
         },
       });
       setIsEditingTitle(false);
@@ -115,6 +125,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
     setDescription(tender.description);
     setStatus(tender.status);
     setBaseInformation(tender.base_information || []);
+    setExclusionCriteria(tender.exclusion_criteria || []);
     setIsEditingTitle(false);
     setIsEditingDescription(false);
     setIsEditingBaseInfo(false);
@@ -229,19 +240,6 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
           {/* Separator */}
           <div className="border-t border-border" />
 
-          {/* Description */}
-          <EditableDescription
-            value={description}
-            onChange={setDescription}
-            originalValue={tender.description}
-            isEditing={isEditingDescription}
-            onEditChange={setIsEditingDescription}
-            minHeight="80px"
-          />
-
-          {/* Separator */}
-          <div className="border-t border-border" />
-
           {/* Base Information */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -265,7 +263,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      const newField: BaseInformation = {
+                      const newField: ExtractedData = {
                         field_name: "",
                         value: null,
                         source_file: null,
@@ -273,6 +271,7 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                         exact_text: null,
                         note: null,
                         fulfillable: null,
+                        status: "pending",
                       };
                       setBaseInformation([...baseInformation, newField]);
                       setIsEditingBaseInfo(true);
@@ -284,14 +283,48 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
                 )}
               </div>
             </div>
-            <BaseInformationEditor
-              baseInformation={baseInformation}
-              onChange={setBaseInformation}
-              editingIndex={null}
-              onEditIndexChange={() => {}}
-              variant="compact"
-              isEditingMode={isEditingBaseInfo}
-              onEditingModeChange={setIsEditingBaseInfo}
+            {!isEditingBaseInfo ? (
+              <BaseInformationCardList
+                baseInformation={baseInformation}
+                excludeFields={["compact_description"]}
+              />
+            ) : (
+              <BaseInformationEditor
+                baseInformation={baseInformation}
+                onChange={setBaseInformation}
+                editingIndex={null}
+                onEditIndexChange={() => {}}
+                variant="compact"
+                isEditingMode={isEditingBaseInfo}
+                onEditingModeChange={setIsEditingBaseInfo}
+              />
+            )}
+          </div>
+
+          {/* Separator */}
+          <div className="border-t border-border" />
+
+          {/* Description */}
+          <EditableDescription
+            value={description}
+            onChange={setDescription}
+            originalValue={tender.description}
+            isEditing={isEditingDescription}
+            onEditChange={setIsEditingDescription}
+            minHeight="80px"
+          />
+
+          {/* Separator */}
+          <div className="border-t border-border" />
+
+          {/* Exclusion Criteria */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Exclusion Criteria
+            </Label>
+            <BaseInformationGrid
+              baseInformation={exclusionCriteria}
+              emptyMessage="No exclusion criteria available."
             />
           </div>
         </div>

@@ -1,11 +1,12 @@
-import type { BaseInformation } from "@/services/api/api";
+import type { ExtractedData } from "@/services/api/api";
 import { cn } from "@/lib/utils";
 
 interface BaseInformationGridProps {
-  baseInformation: BaseInformation[];
+  baseInformation: ExtractedData[];
   onItemClick?: (index: number) => void;
   selectedIndex?: number | null;
   excludeFields?: string[];
+  emptyMessage?: string;
 }
 
 export function BaseInformationGrid({
@@ -13,6 +14,7 @@ export function BaseInformationGrid({
   onItemClick,
   selectedIndex,
   excludeFields = ["compact_description"],
+  emptyMessage = "No items available.",
 }: BaseInformationGridProps) {
   const getAllFields = () => {
     return baseInformation.filter(
@@ -25,7 +27,7 @@ export function BaseInformationGrid({
   if (fields.length === 0) {
     return (
       <div className="text-sm text-muted-foreground italic p-3 border border-dashed text-center">
-        No base information. Click "Add Field" to add a field.
+        {emptyMessage}
       </div>
     );
   }

@@ -5,6 +5,7 @@ export { EditableTitle } from "./EditableTitle";
 export { EditableDescription } from "./EditableDescription";
 export { BaseInformationEditor } from "./BaseInformationEditor";
 export { BaseInformationGrid } from "./BaseInformationGrid";
+export { BaseInformationCardList } from "./BaseInformationCardList";
 export { ApproveRejectButtons } from "./ApproveRejectButtons";
 export { TenderActionButtons } from "./TenderActionButtons";
 export { SaveCancelFooter } from "./SaveCancelFooter";

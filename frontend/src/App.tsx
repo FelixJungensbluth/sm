@@ -7,8 +7,6 @@ import { RequirementsExtraction } from "@/pages/requirements-extraction";
 import { Chat } from "@/pages/chat";
 import { NormalLayout } from "@/components/layout/NormalLayout";
 import { ThemeProvider } from "@/components/theme-provider";
-import { SearchProvider } from "@/contexts/search-context";
-import { CommandMenuProvider } from "@/contexts/command-menu-context";
 import { ThemeMode } from "./lib/types";
 import { HotkeysProvider } from "react-hotkeys-hook";
 import { ApiProvider } from "./contexts/api-context";
@@ -16,35 +14,31 @@ import { ApiProvider } from "./contexts/api-context";
 function AppContent() {
   return (
     <ThemeProvider initialTheme={ThemeMode.LIGHT}>
-      <SearchProvider>
-        <CommandMenuProvider>
-          <div className="h-screen flex flex-col bg-background">
-            <Routes>
-              <Route element={<NormalLayout />}>
-                <Route
-                  path="/projects/:projectId/tasks"
-                  element={<Tenders />}
-                />
-                <Route
-                  path="/projects/:projectId/tasks/:taskId"
-                  element={<TenderDetail />}
-                />
-                <Route path="/" element={<Tenders />} />
-                <Route path="/tasks/:taskId" element={<TenderDetail />} />
-                <Route path="/tenders/:tenderId" element={<TenderDetail />} />
-                <Route path="/tenders/:tenderId/view" element={<TenderView />} />
-                <Route path="/tenders/:tenderId/requirements" element={<RequirementsExtraction />} />
-                <Route path="/projects/:projectId/tenders/:tenderId" element={<TenderDetail />} />
-                <Route path="/projects/:projectId/tenders/:tenderId/view" element={<TenderView />} />
-                <Route path="/projects/:projectId/tenders/:tenderId/requirements" element={<RequirementsExtraction />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/settings/projects" element={<Settings />} />
-              </Route>
-            </Routes>
-          </div>
-        </CommandMenuProvider>
-      </SearchProvider>
+      <div className="h-screen flex flex-col bg-background">
+        <Routes>
+          <Route element={<NormalLayout />}>
+            <Route
+              path="/projects/:projectId/tasks"
+              element={<Tenders />}
+            />
+            <Route
+              path="/projects/:projectId/tasks/:taskId"
+              element={<TenderDetail />}
+            />
+            <Route path="/" element={<Tenders />} />
+            <Route path="/tasks/:taskId" element={<TenderDetail />} />
+            <Route path="/tenders/:tenderId" element={<TenderDetail />} />
+            <Route path="/tenders/:tenderId/view" element={<TenderView />} />
+            <Route path="/tenders/:tenderId/requirements" element={<RequirementsExtraction />} />
+            <Route path="/projects/:projectId/tenders/:tenderId" element={<TenderDetail />} />
+            <Route path="/projects/:projectId/tenders/:tenderId/view" element={<TenderView />} />
+            <Route path="/projects/:projectId/tenders/:tenderId/requirements" element={<RequirementsExtraction />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/projects" element={<Settings />} />
+          </Route>
+        </Routes>
+      </div>
     </ThemeProvider>
   );
 }

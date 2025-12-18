@@ -74,15 +74,11 @@ export default function MarkdownViewer({
 
   useEffect(() => {
     if (status === "ready") {
-      // Wait for React to render the markdown content to the DOM
-      // Use multiple requestAnimationFrame calls to ensure DOM is ready
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          // Additional check: ensure markdown content is actually in the DOM
           if (markdownRef.current && markdownRef.current.textContent) {
             onComplete?.();
           } else {
-            // If not ready yet, try again after a short delay
             setTimeout(() => {
               if (markdownRef.current && markdownRef.current.textContent) {
                 onComplete?.();

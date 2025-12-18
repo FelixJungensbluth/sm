@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FolderTree, Table2, FileText } from "lucide-react";
+import { FolderTree, Table, FileText } from "lucide-react";
 import { BackButton } from "@/components/shared/BackButton";
-import { PanelGroup, Panel } from "react-resizable-panels";
 import { useTenderById } from "@/hooks/use-tenders";
 import { useTenderDocuments } from "@/hooks/use-documents";
 import { useRequirementsForTender } from "@/hooks/use-requirements";
@@ -12,7 +11,6 @@ import RequirementsTableView from "@/components/requirements/requirements-table"
 import type { Requirement } from "@/services/api/api";
 import { FileTree } from "@/components/file-tree/FileTree";
 import RequirementCard from "@/components/requirements/requirement-card";
-import ResizeHandler from "@/components/panels/resize-handler";
 
 export function RequirementsExtraction() {
   const { tenderId } = useParams<{ tenderId: string }>();
@@ -71,76 +69,53 @@ export function RequirementsExtraction() {
               <FolderTree className="h-4 w-4" />
             </Button>
           )}
-          <div className="flex items-center border">
-            <Button
-              variant={viewMode === "markdown" ? "default" : "ghost"}
-              size="icon"
-              onClick={() => setViewMode("markdown")}
-              className="h-8 w-8 border-r"
-              aria-label="Markdown view"
-            >
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setViewMode(viewMode === "markdown" ? "table" : "markdown")}
+            aria-label={viewMode === "markdown" ? "Switch to table view" : "Switch to requirements viewer"}
+          >
+            {viewMode === "markdown" ? (
+              <Table className="h-4 w-4" />
+            ) : (
               <FileText className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "table" ? "default" : "ghost"}
-              size="icon"
-              onClick={() => setViewMode("table")}
-              className="h-8 w-8"
-              aria-label="Table view"
-            >
-              <Table2 className="h-4 w-4" />
-            </Button>
-          </div>
-  
+            )}
+          </Button>
         </div>
       </div>
 
       {/* Main Content */}
-      <PanelGroup direction="horizontal" className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 flex">
         {viewMode === "markdown" && (
-          <>
-            <Panel
-              id="requirements"
-              defaultSize={35}
-              minSize={15}
-              className="min-w-0 min-h-0 overflow-hidden"
-            >
-              <div className="h-full border-r bg-muted/30 overflow-y-auto">
-                <div className="space-y-3">
-                  <div>
-                    {(() => {
-                      const selectedIndex = currentRequirement
-                        ? requirements.findIndex(
-                            (req) => req.id === currentRequirement.id
-                          )
-                        : -1;
-                      return requirements.map((requirement, index) => (
-                        <RequirementCard
-                          key={requirement.id}
-                          requirement={requirement}
-                          index={index}
-                          onSelect={(index) =>
-                            setCurrentRequirement(requirements[index])
-                          }
-                          isSelected={selectedIndex === index}
-                        />
-                      ));
-                    })()}
-                  </div>
+          <div className="w-[35%] min-w-0 min-h-0 overflow-hidden">
+            <div className="h-full border-r bg-muted/30 overflow-y-auto">
+              <div className="space-y-3">
+                <div>
+                  {(() => {
+                    const selectedIndex = currentRequirement
+                      ? requirements.findIndex(
+                          (req) => req.id === currentRequirement.id
+                        )
+                      : -1;
+                    return requirements.map((requirement, index) => (
+                      <RequirementCard
+                        key={requirement.id}
+                        requirement={requirement}
+                        index={index}
+                        onSelect={(index) =>
+                          setCurrentRequirement(requirements[index])
+                        }
+                        isSelected={selectedIndex === index}
+                      />
+                    ));
+                  })()}
                 </div>
               </div>
-            </Panel>
-
-            <ResizeHandler id="handle-requirements-markdown" />
-          </>
+            </div>
+          </div>
         )}
 
-        <Panel
-          id="requirements-viewer"
-          defaultSize={viewMode === "table" ? 100 : isFileTreeOpen ? 50 : 65}
-          minSize={50}
-          className="min-w-0 min-h-0 overflow-hidden"
-        >
+        <div className={`${viewMode === "table" ? "flex-1" : isFileTreeOpen ? "w-[50%]" : "w-[65%]"} min-w-0 min-h-0 overflow-hidden`}>
           <div className="h-full overflow-hidden bg-background">
             {viewMode === "table" ? (
               <div className="h-full overflow-auto">
@@ -198,28 +173,20 @@ export function RequirementsExtraction() {
               })()
             )}
           </div>
-        </Panel>
+        </div>
 
         {viewMode === "markdown" && isFileTreeOpen && (
-          <>
-            <ResizeHandler id="handle-markdown-filetree" />
-            <Panel
-              id="file-tree"
-              defaultSize={15}
-              minSize={5}
-              className="min-w-0 min-h-0 overflow-hidden"
-            >
-              <div className="h-full border-l bg-muted/30 overflow-y-auto">
-                <FileTree
-                  documents={documents}
-                  selectedFileId={selectedFileId}
-                  onSelectFile={setSelectedFileId}
-                />
-              </div>
-            </Panel>
-          </>
+          <div className="w-[15%] min-w-0 min-h-0 overflow-hidden">
+            <div className="h-full border-l bg-muted/30 overflow-y-auto">
+              <FileTree
+                documents={documents}
+                selectedFileId={selectedFileId}
+                onSelectFile={setSelectedFileId}
+              />
+            </div>
+          </div>
         )}
-      </PanelGroup>
+      </div>
     </div>
   );
 }

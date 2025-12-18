@@ -125,6 +125,39 @@ export const useConversation = (conversationId: string | null) => {
   });
 };
 
+// Helper to send a message
+export const useSendMessage = () => {
+  const api = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      message,
+      conversationId,
+      tenderId,
+      contextType,
+    }: {
+      message: string;
+      conversationId?: string | null;
+      tenderId?: string | null;
+      contextType?: string;
+    }) => {
+      const res = await api.chat.sendMessage({
+        message,
+        conversation_id: conversationId ?? undefined,
+        tender_id: tenderId ?? undefined,
+        context_type: contextType ?? 'none',
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      // Invalidate and refetch the conversation to get updated messages
+      queryClient.invalidateQueries({ queryKey: ['chat', 'conversation', data.conversation_id] });
+      queryClient.invalidateQueries({ queryKey: ['chat', 'conversations'] });
+    },
+  });
+};
+
 
 
 

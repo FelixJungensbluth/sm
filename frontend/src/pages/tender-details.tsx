@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Eye, Trash2 } from "lucide-react";
 import { statusLabels, statusBoardColors } from "@/utils/status-labels";
 import { useTenderById, useUpdateTender, useDeleteTender } from "@/hooks/use-tenders";
-import type { BaseInformation } from "@/services/api/api";
+import type { ExtractedData } from "@/services/api/api";
 import { TENDER_STATUSES, type TenderStatus } from "@/lib/types";
 import { BackButton } from "@/components/shared/BackButton";
 import { StatusDropdown } from "@/components/shared/StatusDropdown";
@@ -15,6 +15,8 @@ import { DeleteConfirmationDialog } from "@/components/shared/DeleteConfirmation
 import { EditableTitle } from "@/components/shared/EditableTitle";
 import { EditableDescription } from "@/components/shared/EditableDescription";
 import { BaseInformationEditor } from "@/components/shared/BaseInformationEditor";
+import { BaseInformationCardList } from "@/components/shared/BaseInformationCardList";
+import { BaseInformationGrid } from "@/components/shared/BaseInformationGrid";
 import { TenderActionButtons } from "@/components/shared/TenderActionButtons";
 
 export function TenderDetail() {
@@ -31,7 +33,8 @@ export function TenderDetail() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<TenderStatus>("In Prüfung");
-  const [baseInformation, setBaseInformation] = useState<BaseInformation[]>([]);
+  const [baseInformation, setBaseInformation] = useState<ExtractedData[]>([]);
+  const [exclusionCriteria, setExclusionCriteria] = useState<ExtractedData[]>([]);
 
   // Edit mode state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -52,6 +55,7 @@ export function TenderDetail() {
       setDescription(tender.description);
       setStatus(tender.status);
       setBaseInformation(tender.base_information || []);
+      setExclusionCriteria(tender.exclusion_criteria || []);
       setHasChanges(false);
     }
   }, [tender]);
@@ -66,12 +70,16 @@ export function TenderDetail() {
     const hasBaseInfoChange =
       JSON.stringify(baseInformation) !==
       JSON.stringify(tender.base_information || []);
+    const hasExclusionCriteriaChange =
+      JSON.stringify(exclusionCriteria) !==
+      JSON.stringify(tender.exclusion_criteria || []);
 
     setHasChanges(
       hasTitleChange ||
         hasDescriptionChange ||
         hasStatusChange ||
-        hasBaseInfoChange
+        hasBaseInfoChange ||
+        hasExclusionCriteriaChange
     );
   }, [title, description, status, baseInformation, tender]);
 
@@ -120,6 +128,11 @@ export function TenderDetail() {
             JSON.stringify(tender.base_information || [])
               ? baseInformation
               : undefined,
+          exclusion_criteria:
+            JSON.stringify(exclusionCriteria) !==
+            JSON.stringify(tender.exclusion_criteria || [])
+              ? exclusionCriteria
+              : undefined,
         },
       });
       setIsEditingTitle(false);
@@ -141,13 +154,14 @@ export function TenderDetail() {
     setDescription(tender.description);
     setStatus(tender.status);
     setBaseInformation(tender.base_information || []);
+    setExclusionCriteria(tender.exclusion_criteria || []);
     setIsEditingTitle(false);
     setIsEditingDescription(false);
     setEditingBaseInfoIndex(null);
   };
 
   const handleAddBaseInfo = () => {
-    const newField: BaseInformation = {
+    const newField: ExtractedData = {
       field_name: "",
       value: null,
       source_file: null,
@@ -155,6 +169,7 @@ export function TenderDetail() {
       exact_text: null,
       note: null,
       fulfillable: null,
+      status: "pending",
     };
     setBaseInformation([...baseInformation, newField]);
     setEditingBaseInfoIndex(baseInformation.length);
@@ -254,7 +269,7 @@ export function TenderDetail() {
                 <div className="flex items-center gap-2">
                   <StatusDropdown
                     value={status}
-                    onChange={setStatus}
+                    onChange={(newStatus) => setStatus(newStatus as TenderStatus)}
                     statuses={TENDER_STATUSES}
                     statusLabels={statusLabels}
                     statusColors={statusBoardColors}
@@ -268,17 +283,6 @@ export function TenderDetail() {
                 </div>
               </div>
             </div>
-          </Card>
-
-          {/* Description */}
-          <Card className="p-4">
-            <EditableDescription
-              value={description}
-              onChange={setDescription}
-              originalValue={tender.description}
-              isEditing={isEditingDescription}
-              onEditChange={setIsEditingDescription}
-            />
           </Card>
 
           {/* Base Information */}
@@ -297,12 +301,43 @@ export function TenderDetail() {
                   + Add Field
                 </Button>
               </div>
-              <BaseInformationEditor
-                baseInformation={baseInformation}
-                onChange={setBaseInformation}
-                editingIndex={editingBaseInfoIndex}
-                onEditIndexChange={setEditingBaseInfoIndex}
-                variant="full"
+              {editingBaseInfoIndex === null ? (
+                <BaseInformationCardList
+                  baseInformation={baseInformation}
+                  excludeFields={["compact_description"]}
+                />
+              ) : (
+                <BaseInformationEditor
+                  baseInformation={baseInformation}
+                  onChange={setBaseInformation}
+                  editingIndex={editingBaseInfoIndex}
+                  onEditIndexChange={setEditingBaseInfoIndex}
+                  variant="full"
+                />
+              )}
+            </div>
+          </Card>
+
+          {/* Description */}
+          <Card className="p-4">
+            <EditableDescription
+              value={description}
+              onChange={setDescription}
+              originalValue={tender.description}
+              isEditing={isEditingDescription}
+              onEditChange={setIsEditingDescription}
+            />
+          </Card>
+
+          {/* Exclusion Criteria */}
+          <Card className="p-4">
+            <div className="space-y-3">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Exclusion Criteria
+              </Label>
+              <BaseInformationGrid
+                baseInformation={exclusionCriteria}
+                emptyMessage="No exclusion criteria available."
               />
             </div>
           </Card>

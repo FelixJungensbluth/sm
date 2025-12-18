@@ -3,14 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { FolderTree } from "lucide-react";
 import { BackButton } from "@/components/shared/BackButton";
-import { PanelGroup, Panel } from "react-resizable-panels";
 import { useTenderById } from "@/hooks/use-tenders";
 import { useTenderDocuments } from "@/hooks/use-documents";
 import BaseInformationViewer from "@/components/base-information/base-information-viewer";
-import type { BaseInformation } from "@/services/api/api";
+import type { ExtractedData } from "@/services/api/api";
 import { FileTree } from "@/components/file-tree/FileTree";
 import BaseInformationCard from "@/components/base-information/base-information-card";
-import ResizeHandler from "@/components/panels/resize-handler";
 
 export function TenderView() {
   const { tenderId } = useParams<{ tenderId: string }>();
@@ -18,7 +16,7 @@ export function TenderView() {
   const { data: tender } = useTenderById(tenderId);
   const { data: documents = [] } = useTenderDocuments(tenderId);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  const [currentBaseInfo, setCurrentBaseInfo] = useState<BaseInformation>();
+  const [currentBaseInfo, setCurrentBaseInfo] = useState<ExtractedData>();
   const [isFileTreeOpen, setIsFileTreeOpen] = useState(true);
 
   useEffect(() => {
@@ -52,13 +50,8 @@ export function TenderView() {
       </div>
 
       {/* Main Content */}
-      <PanelGroup direction="horizontal" className="flex-1 min-h-0">
-        <Panel
-          id="base-information"
-          defaultSize={35}
-          minSize={15}
-          className="min-w-0 min-h-0 overflow-hidden"
-        >
+      <div className="flex-1 min-h-0 flex">
+        <div className="w-[35%] min-w-0 min-h-0 overflow-hidden">
           <div className="h-full border-r bg-muted/30 overflow-y-auto">
             <div className="space-y-3">
               <h2 className="p-4 text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b border-border/50">
@@ -95,17 +88,10 @@ export function TenderView() {
               </div>
             </div>
           </div>
-        </Panel>
-
-        <ResizeHandler id="handle-base-markdown" />
+        </div>
 
         {/* Center - Markdown Viewer */}
-        <Panel
-          id="markdown-viewer"
-          defaultSize={isFileTreeOpen ? 50 : 75}
-          minSize={50}
-          className="min-w-0 min-h-0 overflow-hidden"
-        >
+        <div className={`${isFileTreeOpen ? "w-[50%]" : "w-[65%]"} min-w-0 min-h-0 overflow-hidden`}>
           <div className="h-full overflow-hidden bg-background">
             {(() => {
               if (!selectedFileId || documents.length === 0) {
@@ -137,28 +123,20 @@ export function TenderView() {
               );
             })()}
           </div>
-        </Panel>
+        </div>
 
         {isFileTreeOpen && (
-          <>
-            <ResizeHandler id="handle-markdown-filetree" />
-            <Panel
-              id="file-tree"
-              defaultSize={15}
-              minSize={5}
-              className="min-w-0 min-h-0 overflow-hidden"
-            >
-              <div className="h-full border-l bg-muted/30 overflow-y-auto">
-                <FileTree
-                  documents={documents}
-                  selectedFileId={selectedFileId}
-                  onSelectFile={setSelectedFileId}
-                />
-              </div>
-            </Panel>
-          </>
+          <div className="w-[15%] min-w-0 min-h-0 overflow-hidden">
+            <div className="h-full border-l bg-muted/30 overflow-y-auto">
+              <FileTree
+                documents={documents}
+                selectedFileId={selectedFileId}
+                onSelectFile={setSelectedFileId}
+              />
+            </div>
+          </div>
         )}
-      </PanelGroup>
+      </div>
     </div>
   );
 }

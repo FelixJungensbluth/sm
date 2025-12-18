@@ -1,19 +1,5 @@
-from typing import Tuple
 from dataclasses import dataclass
-import re
-import json
-from typing import Dict, List
-import uuid
-import asyncio
-
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import PromptTemplate
-
-from app.config.settings import SettingsDep
-from app.config.logger import logger
-from app.models.base_information import BaseInformation
-from app.services.rag.rag_service import RagService
-from app.llm.provider.base_llm import BaseLLM, LlmRequest
+from typing import List, Dict
 
 
 @dataclass(frozen=True)
@@ -23,16 +9,7 @@ class Query:
     instructions: str
 
 
-@dataclass
-class BaseInformationRequest:
-    field_name: str
-    query: Query
-    context: str
-    request: LlmRequest
-    error_context: str = ""
-
-
-QUERIES: Dict[str, Query] = {
+BASE_INFORMATION_QUERIES: Dict[str, Query] = {
     "name": Query(
         question="Wie lautet der vollständige Name des ausgeschriebenen Projekts?",
         terms=[
@@ -104,6 +81,10 @@ QUERIES: Dict[str, Query] = {
         ],
         instructions="Finde die vollständige Adresse des Auftraggebers inklusive Straße, PLZ und Ort. Bei mehreren Standorten bevorzuge den Hauptsitz oder die Vergabestelle.",
     ),
+}
+
+
+EXCLUSION_CRITERIA_QUERIES: Dict[str, Query] = {
     "russia_sanctions": Query(
         question="Wird eine Erklärung zu Russland-Sanktionen bzw. einem Wirtschaftsembargo gefordert?",
         terms=["Russlandsanktionen", "Embargo", "EU-Sanktionen Russland", "Erklärung"],
@@ -218,205 +199,3 @@ QUERIES: Dict[str, Query] = {
         instructions="Finde alle Versicherungssummen und gib sie zusammen mit den zu versichernden Typen in einer Liste an, sofern eine Haftpflichtversicherung erwähnt wird.",
     ),
 }
-
-EXTRACT_PROMPT_TEMPLATE = """
-Du bist Experte für die Analyse von deutschen Ausschreibungsunterlagen.
-
-WICHTIGE REGELN:
-1. Beantworte **ausschließlich** auf Basis des bereitgestellten Kontexts.
-2. Antworte IMMER auf deutsch.
-3. Wenn die Information fehlt, lasse sie lehr.
-4. Gib exakt dieses JSON zurück (keine zusätzlichen Felder, keine Kommentare)
-5. **KRITISCH**: Das "exact_text" Feld MUSS eine exakte, unveränderte Kopie aus dem Kontext sein
-6. **NIEMALS** den exact_text umformulieren, zusammenfassen oder ändern
-7. **NIEMALS** mehrere Textpassagen in exact_text kombinieren
-8. Wenn der Text über mehrere Zeilen geht, kopiere ihn exakt mit allen Zeilenumbrüchen
-9. Kopiere den Text inklusive aller Sonderzeichen, Zahlen und Formatierung
-10. Gib IMMER die Datei-ID (source_file_id) an wenn es eine Quelle gibt
-11. Gib IMMER den Dateinamen (source_file) an wenn es eine Quelle gibt
-
-**BEISPIEL für exact_text:**
-- RICHTIG: "Mindestumsatz von 2.500.000 EUR in den letzten drei Geschäftsjahren"
-- FALSCH: "Der Bewerber muss einen Mindestumsatz von 2,5 Mio Euro vorweisen"
-
-**Spezielle Anweisung für dieses Feld:**
-{field_instructions}
-
-{format_instructions}
-
-<|user|>
-Gesuchtes Feld: **{field_name}**
-Spezifische Frage: **{field_question}**
----
-Kontext:
-{context}
-
-{error_context}
-<|assistant|>
-""".strip()
-
-INITIAL_CONTEXT_SIZE = 15
-
-
-def find_source_in_context(query: str, document: str) -> bool:
-    cleaned_document = re.sub(r"[^A-Za-z0-9]", "", document)
-    cleaned_query = re.sub(r"[^A-Za-z0-9]", "", query)
-
-    return cleaned_query in cleaned_document
-
-
-class BaseInformationService:
-    def __init__(
-        self, settings: SettingsDep, llm_provider: BaseLLM, rag_service: RagService
-    ):
-        self.settings = settings
-        self.parser = PydanticOutputParser(pydantic_object=BaseInformation)
-        self.llm_provider = llm_provider
-        self.rag_service = rag_service
-
-        self.prompt_template = PromptTemplate(
-            template=EXTRACT_PROMPT_TEMPLATE,
-            input_variables=[
-                "field_name",
-                "field_question",
-                "field_instructions",
-                "context",
-                "error_context",
-            ],
-            partial_variables={
-                "format_instructions": self.parser.get_format_instructions()
-            },
-        )
-
-    async def get_context(
-        self,
-        tender_id: uuid.UUID,
-        query: str,
-        search_terms: List[str] | None = None,
-        top_k: int = 15,
-    ) -> str:
-        if search_terms:
-            combined_keywords = " ".join(search_terms)
-            query = f"{query} Relevante Keywords: {combined_keywords}"
-
-        chunks = await self.rag_service.retrieve_chunks(tender_id, query, top_k=top_k)
-
-        context_parts = []
-        for chunk in chunks:
-            context_parts.append(
-                f"Dateiname {chunk.file_name}, Datei-ID: {chunk.file_id}: \n{chunk.content}"
-            )
-        context = "\n\n".join(context_parts)
-
-        return context
-
-    async def create_requests(
-        self, tender_id: uuid.UUID, top_k: int = INITIAL_CONTEXT_SIZE
-    ) -> List[BaseInformationRequest]:
-        context_tasks = [
-            self.get_context(tender_id, query.question, query.terms, top_k)
-            for query in QUERIES.values()
-        ]
-        contexts = await asyncio.gather(*context_tasks)
-
-        base_information_requests = []
-        for (field_name, query), context in zip(QUERIES.items(), contexts):
-            prompt = self.prompt_template.format(
-                field_name=field_name,
-                field_question=query.question,
-                field_instructions=query.instructions,
-                context=context,
-                error_context="",
-            )
-
-            base_information_requests.append(
-                BaseInformationRequest(
-                    field_name=field_name,
-                    query=query,
-                    request=LlmRequest(role="system", message=prompt),
-                    context=context,
-                )
-            )
-
-        return base_information_requests
-
-    async def extract_base_information(
-        self, tender_id: uuid.UUID
-    ) -> Tuple[List[BaseInformation], str | None, str | None]:
-        base_information_requests = await self.create_requests(tender_id)
-
-        llm_requests = [req.request for req in base_information_requests]
-        results = await self.llm_provider.process_requests(llm_requests)
-        parsed_results, description, name = self.parse_results(results, base_information_requests, 0)
-
-        if description and name:
-            return list(parsed_results.values()) if parsed_results else [], description.value, name.value
-        else:
-            return list(parsed_results.values()) if parsed_results else [], None, None
-
-    def parse_results(
-        self,
-        results: List[dict],
-        base_information_requests: List[BaseInformationRequest],
-        attempt: int,
-    ):
-        successful_results = {}
-        description = None
-        name = None
-
-        for successful_response, req in zip(results, base_information_requests):
-            field_name = req.field_name
-            try:
-                output = self.llm_provider.get_output(successful_response, only_json=True)
-                
-                # Fix cases where LLM returns dict for value instead of string
-                try:
-                    output_dict = json.loads(output)
-                    if isinstance(output_dict.get("value"), dict):
-                        # Convert dict value to JSON string
-                        output_dict["value"] = json.dumps(output_dict["value"], ensure_ascii=False)
-                        output = json.dumps(output_dict, ensure_ascii=False)
-                except (json.JSONDecodeError, TypeError):
-                    # If we can't parse/fix it, continue with original output
-                    pass
-                
-                parsed_result: BaseInformation = self.parser.parse(output)
-
-                field_name = parsed_result.field_name
-                if field_name not in QUERIES:
-                    logger.warning(f"Unexpected field name '{field_name}' in response")
-                    continue
-
-                base_information = BaseInformation(
-                    value=parsed_result.value,
-                    source_file=parsed_result.source_file,
-                    source_file_id=parsed_result.source_file_id,
-                    exact_text=parsed_result.exact_text,
-                    field_name=parsed_result.field_name,
-                )
-
-                if base_information.value:
-                    successful_results[field_name] = base_information
-
-                    if field_name == "compact_description":
-                        description = base_information
-                    elif field_name == "name":
-                        name = base_information
-                        continue
-
-                    if not parsed_result.exact_text:
-                        logger.warning(f"Exact text is missing for {field_name}")
-                        continue
-
-                    if not parsed_result.source_file:
-                        logger.warning(f"Source file not found for {field_name}")
-                        continue
-
-                    if not parsed_result.source_file_id:
-                        logger.warning(f"Source file id not found for {field_name}")
-                        continue
-
-            except Exception as e:
-                logger.error(f"Field '{field_name}' attempt {attempt} failed: {e}")
-
-        return successful_results, description, name

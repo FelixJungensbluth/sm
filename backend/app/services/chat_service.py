@@ -1,4 +1,4 @@
-from typing import Optional, AsyncGenerator
+from typing import Optional
 import uuid
 
 from app.config.settings import SettingsDep
@@ -119,15 +119,15 @@ Answer the user's question based on the context above."""
 
         return messages
 
-    async def stream_chat_response(
+    async def chat_response(
         self,
         conversation_id: uuid.UUID,
         user_message: str,
         context_type: str = "none",
         tender_id: Optional[uuid.UUID] = None,
-    ) -> AsyncGenerator[str, None]:
+    ) -> str:
         """
-        Stream chat response with RAG context.
+        Get chat response with RAG context.
         
         Args:
             conversation_id: ID of the conversation
@@ -135,15 +135,14 @@ Answer the user's question based on the context above."""
             context_type: "none", "global", or "tender"
             tender_id: Optional tender ID for tender-specific context
             
-        Yields:
-            Token strings as they are generated
+        Returns:
+            The complete response string
         """
         # Get or create conversation
         conversation = self.chat_repo.get_conversation_by_id(conversation_id)
         if not conversation:
             logger.error(f"Conversation {conversation_id} not found")
-            yield "[Error: Conversation not found]"
-            return
+            raise ValueError(f"Conversation {conversation_id} not found")
 
         # Retrieve RAG context
         try:
@@ -155,16 +154,12 @@ Answer the user's question based on the context above."""
         # Build LLM messages
         llm_messages = self.build_llm_messages(conversation, user_message, rag_context)
 
-        # Stream response
-        full_response = ""
+        # Get response
         try:
-            async for token in self.llm_provider.stream_response(llm_messages):
-                full_response += token
-                yield token
+            full_response = await self.llm_provider.get_response(llm_messages)
         except Exception as e:
-            logger.error(f"Error streaming response: {e}")
-            yield f"[Error: {str(e)}]"
-            return
+            logger.error(f"Error getting response: {e}")
+            raise
 
         # Save messages to conversation
         user_msg = ChatMessage.create("user", user_message)
@@ -172,5 +167,7 @@ Answer the user's question based on the context above."""
 
         self.chat_repo.add_message(conversation_id, user_msg)
         self.chat_repo.add_message(conversation_id, assistant_msg)
+
+        return full_response
 
 

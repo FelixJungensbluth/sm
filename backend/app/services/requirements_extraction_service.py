@@ -11,9 +11,7 @@ from pydantic import BaseModel, Field
 
 from app.config.settings import SettingsDep
 from app.config.logger import logger
-from app.models.document import Document
 from app.models.requirement import Requirement, RequirementType
-from app.services.external.minio_service import MinioService
 from app.services.rag.splitter.recursiv_splitter import RecursiveSplitter
 
 

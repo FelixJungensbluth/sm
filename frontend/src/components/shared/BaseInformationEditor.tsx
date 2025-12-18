@@ -4,12 +4,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { X as XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { BaseInformation } from "@/services/api/api";
+import type { ExtractedData } from "@/services/api/api";
 import { BaseInformationGrid } from "./BaseInformationGrid";
 
 interface BaseInformationEditorProps {
-  baseInformation: BaseInformation[];
-  onChange: (baseInformation: BaseInformation[]) => void;
+  baseInformation: ExtractedData[];
+  onChange: (baseInformation: ExtractedData[]) => void;
   onRemove?: (index: number) => void;
   editingIndex: number | null;
   onEditIndexChange: (index: number | null) => void;
@@ -38,7 +38,7 @@ export function BaseInformationEditor({
 
   const handleFieldChange = (
     index: number,
-    field: keyof BaseInformation,
+    field: keyof ExtractedData,
     value: string | boolean | null
   ) => {
     const updated = [...baseInformation];
@@ -86,20 +86,10 @@ export function BaseInformationEditor({
                     key={originalIndex}
                     className="p-3 border border-border bg-card space-y-2"
                   >
-                    <div className="space-y-1">
-                      <Label className="text-xs">Field Name</Label>
-                      <Input
-                        value={info.field_name || ""}
-                        onChange={(e) =>
-                          handleFieldChange(
-                            originalIndex,
-                            "field_name",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., submission_deadline"
-                        className="h-7 text-sm"
-                      />
+                    <div className="pb-2 border-b border-border">
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {info.field_name || "Unnamed Field"}
+                      </h3>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Value</Label>
@@ -148,26 +138,6 @@ export function BaseInformationEditor({
                         Fulfillable
                       </label>
                     </div>
-                    {info.exact_text && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">
-                          Exact Text (read-only)
-                        </Label>
-                        <div className="text-xs text-muted-foreground p-1.5 bg-muted border">
-                          {info.exact_text}
-                        </div>
-                      </div>
-                    )}
-                    {info.source_file && (
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">
-                          Source File (read-only)
-                        </Label>
-                        <div className="text-xs text-muted-foreground p-1.5 bg-muted border">
-                          {info.source_file}
-                        </div>
-                      </div>
-                    )}
                     <div className="flex items-center justify-end pt-1">
                       <Button
                         size="sm"
@@ -240,37 +210,25 @@ export function BaseInformationEditor({
             >
               {isEditing ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Field Name</Label>
-                      <Input
-                        value={info.field_name || ""}
-                        onChange={(e) =>
-                          handleFieldChange(
-                            originalIndex,
-                            "field_name",
-                            e.target.value
-                          )
-                        }
-                        placeholder="e.g., submission_deadline"
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Value</Label>
-                      <Input
-                        value={info.value || ""}
-                        onChange={(e) =>
-                          handleFieldChange(
-                            originalIndex,
-                            "value",
-                            e.target.value || null
-                          )
-                        }
-                        placeholder="Enter value..."
-                        className="h-8 text-sm"
-                      />
-                    </div>
+                  <div className="pb-2 border-b border-border">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      {info.field_name || "Unnamed Field"}
+                    </h3>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Value</Label>
+                    <Input
+                      value={info.value || ""}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          originalIndex,
+                          "value",
+                          e.target.value || null
+                        )
+                      }
+                      placeholder="Enter value..."
+                      className="h-8 text-sm"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Note</Label>
@@ -304,26 +262,6 @@ export function BaseInformationEditor({
                       Fulfillable
                     </label>
                   </div>
-                  {info.exact_text && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        Exact Text (read-only)
-                      </Label>
-                      <div className="text-xs text-muted-foreground p-2 bg-muted border">
-                        {info.exact_text}
-                      </div>
-                    </div>
-                  )}
-                  {info.source_file && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        Source File (read-only)
-                      </Label>
-                      <div className="text-xs text-muted-foreground p-2 bg-muted border">
-                        {info.source_file}
-                      </div>
-                    </div>
-                  )}
                   <div className="flex items-center gap-2 pt-2 border-t">
                     <Button
                       size="sm"

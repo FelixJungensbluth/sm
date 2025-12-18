@@ -50,3 +50,6 @@ def create_internal_server_exception(detail: str = "Internal server error") -> H
 
 
 
+
+
+

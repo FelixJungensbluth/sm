@@ -1,4 +1,4 @@
-from app.models.base_information import BaseInformationStatus
+from app.models.extracted_data import ExtractedDataStatus
 from app.repos.shared import get_jobs_repo
 from app.repos.jobs_repo import JobsRepo
 from typing import Annotated, List, Optional
@@ -279,7 +279,7 @@ async def get_tender_documents(
         {"id": str(doc.id), "name": doc.name, "tender_id": str(doc.tender_id)}
         for doc in documents
     ]
-    return TenderDocumentListResponse(documents=document_dicts)
+    return TenderDocumentListResponse(documents=documents)
 
 
 @router.put(
@@ -293,7 +293,7 @@ async def get_tender_documents(
 async def update_tender_base_information_status(
     tender_id: uuid.UUID,
     field_name: str = Query(..., description="Name of the base information field to update"),
-    base_information_status: BaseInformationStatus = Query(..., description="New status for the field"),
+    base_information_status: ExtractedDataStatus = Query(..., description="New status for the field"),
     tender_repo: TenderRepo = Depends(get_tender_repo),
 ) -> UpdateTenderBaseInformationStatusResponse:
     """

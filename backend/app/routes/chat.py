@@ -7,13 +7,13 @@ from fastapi import (
     status,
     Query,
 )
-from fastapi.responses import StreamingResponse, JSONResponse
-import json
+from fastapi.responses import JSONResponse
 
 from app.models.chat import (
     ChatConversation,
     ChatMessage,
     ChatRequest,
+    ChatResponse,
     CreateConversationResponse,
     ConversationListResponse,
     ConversationResponse,
@@ -208,19 +208,19 @@ async def delete_conversation(
 @router.post(
     "/messages",
     status_code=status.HTTP_200_OK,
+    response_model=ChatResponse,
     operation_id="send_message",
     summary="Send a chat message",
-    description="Send a message in a conversation and stream the AI response. Creates a new conversation if conversation_id is not provided.",
+    description="Send a message in a conversation and get the AI response. Creates a new conversation if conversation_id is not provided.",
 )
 async def send_message(
     request: ChatRequest,
     chat_service: ChatService = Depends(get_chat_service),
     chat_repo: ChatRepo = Depends(get_chat_repo),
-):
+) -> ChatResponse:
     """
-    Send a message and stream the response.
+    Send a message and get the response.
     
-    This endpoint streams the AI response using Server-Sent Events (SSE).
     If no conversation_id is provided, a new conversation is created.
     
     Args:
@@ -229,7 +229,7 @@ async def send_message(
         chat_repo: Repository for chat operations
         
     Returns:
-        StreamingResponse with Server-Sent Events containing tokens and completion status
+        ChatResponse containing the conversation_id, message_id, and content
         
     Raises:
         HTTPException: If conversation not found (when conversation_id is provided)
@@ -254,32 +254,36 @@ async def send_message(
     else:
         context_type = "none"
 
-    async def generate():
-        try:
-            async for token in chat_service.stream_chat_response(
-                conversation_id=conversation_id,
-                user_message=request.message,
-                context_type=context_type,
-                tender_id=request.tender_id,
-            ):
-                # Send as Server-Sent Events format
-                yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
-            
-            # Send completion message
-            yield f"data: {json.dumps({'type': 'done', 'conversation_id': str(conversation_id)})}\n\n"
-        except Exception as e:
-            logger.error(f"Error streaming chat response: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
-
-    return StreamingResponse(
-        generate(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
+    try:
+        response_content = await chat_service.chat_response(
+            conversation_id=conversation_id,
+            user_message=request.message,
+            context_type=context_type,
+            tender_id=request.tender_id,
+        )
+        
+        # Get the last message (assistant message) to get its ID
+        conversation = chat_repo.get_conversation_by_id(conversation_id)
+        if not conversation:
+            raise create_not_found_exception("Conversation", str(conversation_id))
+        
+        # Find the assistant message we just created
+        assistant_messages = [m for m in conversation.messages if m.role == "assistant"]
+        message_id = assistant_messages[-1].id if assistant_messages else uuid.uuid4()
+        
+        return ChatResponse(
+            conversation_id=conversation_id,
+            message_id=message_id,
+            content=response_content,
+        )
+    except ValueError as e:
+        raise create_not_found_exception("Conversation", str(conversation_id))
+    except Exception as e:
+        logger.error(f"Error getting chat response: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting chat response: {str(e)}",
+        )
 
 
 @router.get(

@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -25,11 +24,13 @@ import {
   useUpdateConversationTitle,
   useDeleteConversation,
   useConversation,
+  useSendMessage,
 } from '@/hooks/useChatConversations';
-import { useChatStream } from '@/hooks/useChatStream';
 import { useTenders } from '@/hooks/use-tenders';
 import type { ChatContext } from '@/lib/chat-types';
 import { toast } from 'sonner';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export function Chat() {
   const [searchParams] = useSearchParams();
@@ -38,23 +39,18 @@ export function Chat() {
   const createConversation = useCreateConversation();
   const updateTitle = useUpdateConversationTitle();
   const deleteConversation = useDeleteConversation();
-  const { streamMessage, cancel } = useChatStream();
+  const sendMessage = useSendMessage();
 
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
-  const [selectedContext, setSelectedContext] = useState<ChatContext>({ id: 'none', name: 'No Context' });
-  const [streamingContent, setStreamingContent] = useState<string>('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
+  const [selectedContext, setSelectedContext] = useState<ChatContext>({ id: 'global', name: 'All Tenders' });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: selectedConversation, refetch: refetchConversation } = useConversation(selectedConversationId);
-  const lastStreamedConvId = useRef<string | null>(null);
 
-  // Build available contexts
+  // Build available contexts - no "No Context" option
   const availableContexts: ChatContext[] = [
-    { id: 'none', name: 'No Context' },
     { id: 'global', name: 'All Tenders' },
     ...tenders.map((t) => ({
       id: 'tender',
@@ -63,7 +59,7 @@ export function Chat() {
     })),
   ];
 
-  // Set context from URL parameter if tenderId is provided
+  // Set context from URL parameter if tenderId is provided, otherwise default to global
   useEffect(() => {
     const tenderIdFromUrl = searchParams.get('tenderId');
     if (tenderIdFromUrl && tenders.length > 0) {
@@ -75,13 +71,16 @@ export function Chat() {
           tender_id: tender.id,
         });
       }
+    } else if (!selectedContext.tender_id && selectedContext.id !== 'global') {
+      // Ensure we always have a valid context (default to global)
+      setSelectedContext({ id: 'global', name: 'All Tenders' });
     }
   }, [searchParams, tenders]);
 
-  // Auto-scroll to bottom when messages change or streaming
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedConversation?.messages, streamingContent, pendingUserMessage]);
+  }, [selectedConversation?.messages]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -93,10 +92,11 @@ export function Chat() {
 
   const handleNewConversation = useCallback(async () => {
     try {
+      const contextType = selectedContext.id === 'tender' && selectedContext.tender_id ? 'tender' : 'global';
       const result = await createConversation.mutateAsync({
         title: 'New Conversation',
         tenderId: selectedContext.tender_id || null,
-        contextType: selectedContext.id,
+        contextType,
       });
       setSelectedConversationId(result.id);
       setInputValue('');
@@ -107,72 +107,43 @@ export function Chat() {
   }, [selectedContext, createConversation]);
 
   const handleSendMessage = useCallback(async () => {
-    if (!inputValue.trim() || isStreaming) return;
+    if (!inputValue.trim() || sendMessage.isPending) return;
 
     const messageContent = inputValue.trim();
     setInputValue('');
-    setPendingUserMessage(messageContent); // Show user message immediately
-    setIsStreaming(true);
-    setStreamingContent('');
 
     let convId = selectedConversationId;
 
     try {
       // Create new conversation if none selected
       if (!convId) {
+        const contextType = selectedContext.id === 'tender' && selectedContext.tender_id ? 'tender' : 'global';
         const result = await createConversation.mutateAsync({
           title: messageContent.slice(0, 50) || 'New Conversation',
           tenderId: selectedContext.tender_id || null,
-          contextType: selectedContext.id,
+          contextType,
         });
         convId = result.id;
         setSelectedConversationId(convId);
       }
 
-      // Determine context type
-      let contextType = selectedContext.id;
-      if (selectedContext.id === 'tender' && selectedContext.tender_id) {
-        contextType = 'tender';
-      }
+      // Determine context type - ensure it's never 'none'
+      let contextType = selectedContext.id === 'tender' && selectedContext.tender_id ? 'tender' : 'global';
 
-      // Stream the response
-      await streamMessage(
-        messageContent,
-        convId,
-        selectedContext.tender_id || null,
+      // Send the message
+      await sendMessage.mutateAsync({
+        message: messageContent,
+        conversationId: convId,
+        tenderId: selectedContext.tender_id || null,
         contextType,
-        (token) => {
-          setStreamingContent((prev) => prev + token);
-        },
-        (completedConvId) => {
-          setIsStreaming(false);
-          setStreamingContent('');
-          setPendingUserMessage(null); // Clear pending message
-          setSelectedConversationId(completedConvId);
-          // Only refetch once after streaming completes to get the saved messages
-          if (lastStreamedConvId.current !== completedConvId) {
-            lastStreamedConvId.current = completedConvId;
-            // Use setTimeout to debounce and avoid immediate refetch loops
-            setTimeout(() => {
-              refetchConversation();
-            }, 500);
-          }
-        },
-        () => {
-          setIsStreaming(false);
-          setStreamingContent('');
-          setPendingUserMessage(null); // Clear pending message on error
-          toast.error('Failed to stream message');
-        }
-      );
+      });
+
+      // Refetch conversation to get updated messages
+      await refetchConversation();
     } catch (error) {
-      setIsStreaming(false);
-      setStreamingContent('');
-      setPendingUserMessage(null); // Clear pending message on error
       toast.error('Failed to send message');
-      throw error;
     }
-  }, [inputValue, selectedConversationId, selectedContext, isStreaming, createConversation, streamMessage]);
+  }, [inputValue, selectedConversationId, selectedContext, sendMessage, createConversation, refetchConversation]);
 
   const handleDeleteConversation = useCallback(
     async (e: React.MouseEvent, conversationId: string) => {
@@ -219,28 +190,16 @@ export function Chat() {
     }
   }, [selectedConversation?.id, selectedConversation?.title, selectedConversation?.messages.length, updateTitle]);
 
-  // Cleanup streaming on unmount
-  useEffect(() => {
-    return () => {
-      cancel();
-    };
-  }, [cancel]);
 
   const displayMessages = selectedConversation?.messages || [];
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <PanelGroup direction="horizontal" className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 flex">
         {/* Sidebar - Recent Conversations */}
-        <Panel
-          id="conversations-sidebar"
-          defaultSize={25}
-          minSize={20}
-          maxSize={40}
-          className="min-w-0 min-h-0 overflow-hidden border-r bg-muted/30"
-        >
+        <div className="w-[25%] min-w-0 min-h-0 overflow-hidden border-r border-border bg-muted/30">
           <div className="h-full flex flex-col">
-            <div className="p-2 border-b flex items-center justify-between">
+            <div className="p-3 border-b border-border flex items-center justify-between bg-background">
               <h2 className="font-semibold text-sm">Conversations</h2>
               <Button
                 variant="ghost"
@@ -254,94 +213,87 @@ export function Chat() {
             </div>
             <div className="flex-1 overflow-y-auto">
               {conversationsLoading ? (
-                <div className="p-2 text-center text-sm text-muted-foreground">
-                  <Loader2 className="h-6 w-6 mx-auto mb-1 opacity-50 animate-spin" />
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  <Loader2 className="h-6 w-6 mx-auto mb-2 opacity-50 animate-spin" />
                   <p>Loading conversations...</p>
                 </div>
               ) : conversations.length === 0 ? (
-                <div className="p-2 text-center text-sm text-muted-foreground">
-                  <MessageSquare className="h-6 w-6 mx-auto mb-1 opacity-50" />
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  <MessageSquare className="h-6 w-6 mx-auto mb-2 opacity-50" />
                   <p>No conversations yet</p>
-                  <p className="text-xs mt-0.5">Start a new conversation to begin</p>
+                  <p className="text-xs mt-1">Start a new conversation to begin</p>
                 </div>
               ) : (
-                <div className="p-1">
+                <div>
                   {conversations.map((conv, index) => (
                     <div key={conv.id}>
                       <div
                         onClick={() => setSelectedConversationId(conv.id)}
                         className={cn(
-                          'group relative p-3 cursor-pointer transition-colors',
+                          'group relative p-3 cursor-pointer transition-colors border-b border-border',
                           selectedConversationId === conv.id
-                            ? 'bg-accent'
-                            : 'hover:bg-accent/50'
+                            ? 'bg-blue-50'
+                            : 'hover:bg-muted/50'
                         )}
                       >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{conv.title}</p>
-                          {conv.messages.length > 0 && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {conv.messages[conv.messages.length - 1].content}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{conv.title}</p>
+                            {conv.messages.length > 0 && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                {conv.messages[conv.messages.length - 1].content}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(conv.updated_at).toLocaleDateString()}
                             </p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(conv.updated_at).toLocaleDateString()}
-                          </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => handleDeleteConversation(e, conv.id)}
+                            aria-label="Delete conversation"
+                            disabled={deleteConversation.isPending}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => handleDeleteConversation(e, conv.id)}
-                          aria-label="Delete conversation"
-                          disabled={deleteConversation.isPending}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
                       </div>
-                      </div>
-                      {index < conversations.length - 1 && (
-                        <div className="border-b border-border mx-2" />
-                      )}
                     </div>
                   ))}
                 </div>
               )}
             </div>
           </div>
-        </Panel>
+        </div>
 
-        <PanelResizeHandle/>
-        <Panel
-          id="chat-main"
-          defaultSize={75}
-          minSize={60}
-          className="min-w-0 min-h-0 overflow-hidden flex flex-col"
-        >
+        <div className="w-[75%] min-w-0 min-h-0 overflow-hidden flex flex-col bg-background">
           {selectedConversation ? (
             <>
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {displayMessages.map((message) => (
                   <div
                     key={message.id}
                     className={cn(
-                      'flex gap-3',
+                      'flex gap-4',
                       message.role === 'user' ? 'justify-end' : 'justify-start'
                     )}
                   >
                     <div
                       className={cn(
-                        'max-w-[80%] px-5 py-3 border',
+                        'max-w-[80%] px-4 py-3 border',
                         message.role === 'user'
-                          ? 'bg-primary/90 text-primary-foreground border-primary/30'
-                          : 'bg-gray-200 border-border'
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-blue-50 border-blue-200'
                       )}
                     >
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                      <div className="text-sm leading-relaxed markdown-content">
+                        <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
+                      </div>
                       <p className={cn(
-                        'text-xs mt-2',
+                        'text-xs mt-2 text-muted-foreground',
                         message.role === 'user' ? 'opacity-80' : 'opacity-70'
                       )}>
                         {new Date(message.timestamp).toLocaleTimeString()}
@@ -349,32 +301,14 @@ export function Chat() {
                     </div>
                   </div>
                 ))}
-                {/* Pending user message (shown immediately) */}
-                {pendingUserMessage && (
-                  <div className="flex gap-3 justify-end">
-                    <div className="max-w-[80%] px-5 py-3 border bg-primary/90 text-primary-foreground border-primary/30">
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{pendingUserMessage}</p>
-                      <p className="text-xs mt-2 opacity-80">
-                        {new Date().toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {/* Loading indicator or streaming message */}
-                {isStreaming && (
-                  <div className="flex gap-3 justify-start">
-                    <div className="max-w-[80%] px-5 py-3 bg-gray-200 border border-border">
-                      {streamingContent ? (
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                          {streamingContent}
-                          <span className="animate-pulse">▋</span>
-                        </p>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin opacity-70" />
-                          <p className="text-sm text-muted-foreground">Thinking...</p>
-                        </div>
-                      )}
+                {/* Loading indicator while sending message */}
+                {sendMessage.isPending && (
+                  <div className="flex gap-4 justify-start">
+                    <div className="max-w-[80%] px-4 py-3 bg-blue-50 border border-blue-200">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin opacity-70" />
+                        <p className="text-sm text-muted-foreground">Thinking...</p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -382,12 +316,13 @@ export function Chat() {
               </div>
 
               {/* Input Area */}
-              <div className="border-t p-4 space-y-2">
+              <div className="border-t border-border bg-background p-4 space-y-3">
                 <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Context:</span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-xs">
-                        Context: {selectedContext.name}
+                      <Button variant="outline" size="sm" className="text-xs h-7">
+                        {selectedContext.name}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
@@ -413,16 +348,16 @@ export function Chat() {
                     placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
                     className="min-h-[60px] max-h-[200px] resize-none"
                     rows={1}
-                    disabled={isStreaming}
+                    disabled={sendMessage.isPending}
                   />
                   <Button
                     onClick={handleSendMessage}
-                    disabled={!inputValue.trim() || isStreaming}
+                    disabled={!inputValue.trim() || sendMessage.isPending}
                     size="icon"
-                    className="self-end"
+                    className="self-end h-[60px] w-[60px]"
                     aria-label="Send message"
                   >
-                    {isStreaming ? (
+                    {sendMessage.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Send className="h-4 w-4" />
@@ -432,7 +367,7 @@ export function Chat() {
               </div>
             </>
           ) : (
-            <div className="h-full flex items-center justify-center">
+            <div className="h-full flex items-center justify-center bg-background">
               <div className="text-center space-y-4 max-w-md">
                 <MessageSquare className="h-16 w-16 mx-auto opacity-50" />
                 <div>
@@ -448,8 +383,8 @@ export function Chat() {
               </div>
             </div>
           )}
-        </Panel>
-      </PanelGroup>
+        </div>
+      </div>
     </div>
   );
 }

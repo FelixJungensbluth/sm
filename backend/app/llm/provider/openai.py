@@ -29,25 +29,11 @@ class OpenAi(BaseLLM):
         model_name: str,
         api_url: Optional[str] = None,
         model_configs: Optional[Dict[str, Dict[str, float]]] = None,
-        use_loop: bool = False,
-        loop_port: int = 31300,
     ):
         super().__init__(settings, model_name)
         
         self._model_configs = model_configs or DEFAULT_OPENAI_MODELS
-        
-        # Build API URL based on configuration
-        if api_url:
-            # Explicit URL provided, use it
-            self._api_url = api_url
-        elif use_loop:
-            # Use Lens Loop proxy for OpenAI
-            self._api_url = f"http://localhost:{loop_port}/openai/v1/chat/completions"
-            logger.info(f"Using Lens Loop proxy for OpenAI at {self._api_url}")
-        else:
-            # Direct connection to OpenAI
-            self._api_url = DEFAULT_API_URL
-            logger.info(f"Connecting directly to OpenAI at {self._api_url}")
+        self._api_url = api_url or DEFAULT_API_URL
 
         if model_name not in self._model_configs:
             raise ValueError("Unknown model")
@@ -85,16 +71,16 @@ class OpenAi(BaseLLM):
         
         return content
 
-    async def stream_response(
+    async def get_response(
         self, llm_requests: List[LlmRequest]
-    ) -> AsyncGenerator[str, None]:
-        """Stream response from OpenAI API."""
+    ) -> str:
+        """Get complete response from OpenAI API (non-streaming)."""
         messages = [{"role": r.role, "content": r.message} for r in llm_requests]
         
         request_data = {
             "model": self._model_name,
             "messages": messages,
-            "stream": True,
+            "stream": False,
         }
 
         headers = {
@@ -112,40 +98,18 @@ class OpenAi(BaseLLM):
                     if response.status != 200:
                         error_text = await response.text()
                         logger.error(f"OpenAI API error {response.status}: {error_text}")
-                        yield f"[Error: {error_text}]"
-                        return
+                        raise Exception(f"OpenAI API error {response.status}: {error_text}")
 
-                    async for line in response.content:
-                        if not line:
-                            continue
-                        
-                        try:
-                            line_text = line.decode("utf-8").strip()
-                            if not line_text or not line_text.startswith("data: "):
-                                continue
-                            
-                            # Remove "data: " prefix
-                            data_str = line_text[6:]
-                            
-                            # Check for [DONE] marker
-                            if data_str == "[DONE]":
-                                break
-                            
-                            # Parse JSON
-                            data = json.loads(data_str)
-                            
-                            # Extract content from choices
-                            choices = data.get("choices", [])
-                            if choices:
-                                delta = choices[0].get("delta", {})
-                                content = delta.get("content", "")
-                                if content:
-                                    yield content
-                        except json.JSONDecodeError:
-                            continue
-                        except Exception as e:
-                            logger.warning(f"Error parsing OpenAI stream line: {e}")
-                            continue
+                    data = await response.json()
+                    choices = data.get("choices", [])
+                    if not choices:
+                        raise Exception("No choices in OpenAI response")
+                    
+                    content = choices[0].get("message", {}).get("content", "")
+                    if not content:
+                        raise Exception("No content in OpenAI response")
+                    
+                    return content
             except Exception as e:
-                logger.error(f"Error streaming from OpenAI: {e}")
-                yield f"[Error: {str(e)}]"
+                logger.error(f"Error getting response from OpenAI: {e}")
+                raise

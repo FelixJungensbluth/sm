@@ -3,14 +3,15 @@ from app.repos.requirements_repo import RequirementsRepo
 from app.services.requirements_extraction_service import RequirementExtractionService
 from app.models.tender import TenderUpdate
 from app.config.app_config import get_llm_provider
-from app.services.base_information_service import BaseInformationService
+from app.services.data_extraction.data_extraction_service import DataExtractionService
+from app.services.data_extraction.queries import BASE_INFORMATION_QUERIES, EXCLUSION_CRITERIA_QUERIES
+from app.services.data_extraction.extracted_data_parser import parse_extracted_data
 
 import asyncio
 import os
 import uuid
 import traceback
 from typing import List
-from datetime import timedelta
 
 from app.config.logger import logger
 
@@ -49,7 +50,7 @@ class WorkerContext:
         self.embedding_provider = get_embedding_provider(self.settings)
 
         self.rag_service = RagService(self.settings, self.embedding_provider)
-        self.base_information_service = BaseInformationService(self.settings, self.llm_provider, self.rag_service)
+        self.data_extraction_service = DataExtractionService(self.settings, self.llm_provider, self.rag_service)
         self.requirement_service = RequirementExtractionService(self.settings, self.llm_provider)
        
 
@@ -89,17 +90,52 @@ async def run_extract_base_information(job: dict) -> None:
     tender_id = job["tender_id"]
     tender: Tender | None = context.tender_repo.get_tender_by_id(uuid.UUID(tender_id))
     if tender:
-        base_information = await context.base_information_service.extract_base_information(
-            tender.id
+        results, data_extraction_requests = await context.data_extraction_service.extract_base_information(
+            tender.id,
+            BASE_INFORMATION_QUERIES
+        )
+        parsed_results = parse_extracted_data(
+            context.llm_provider,
+            context.data_extraction_service.parser,
+            BASE_INFORMATION_QUERIES,
+            results,
+            data_extraction_requests
         )
 
-        logger.info(f"Base information: {len(base_information[0])}")
+        description_data = parsed_results.pop("compact_description", None)
+        name_data = parsed_results.pop("name", None)
 
-        if base_information:
-            base_information, description, name = base_information
+        base_information = list(parsed_results.values())
 
-            tender_update = TenderUpdate(base_information=base_information, description=description, generated_title=name)
-            context.tender_repo.update_tender(tender.id, tender_update)
+        tender_update = TenderUpdate(
+            base_information=base_information,
+            description=description_data.value if description_data else None,
+            generated_title=name_data.value if name_data else None,
+        )
+        context.tender_repo.update_tender(tender.id, tender_update)
+
+async def run_extract_exclusion_criteria(job: dict) -> None:
+    context = get_ctx()
+    tender_id = job["tender_id"]
+    tender: Tender | None = context.tender_repo.get_tender_by_id(uuid.UUID(tender_id))
+    if tender:
+        results, data_extraction_requests = await context.data_extraction_service.extract_base_information(
+            tender.id,
+            EXCLUSION_CRITERIA_QUERIES
+        )
+        parsed_results = parse_extracted_data(
+            context.llm_provider, 
+            context.data_extraction_service.parser,
+            EXCLUSION_CRITERIA_QUERIES, 
+            results, 
+            data_extraction_requests
+        )
+
+
+        exclusion_criteria = list(parsed_results.values())
+        tender_update = TenderUpdate(exclusion_criteria=exclusion_criteria)
+        context.tender_repo.update_tender(tender.id, tender_update)
+
 
 async def run_extract_requirements(job: dict) -> None:
     context = get_ctx()
@@ -129,6 +165,9 @@ async def run_step_for_job(job: dict) -> None:
             case "extract_base_information":
                 logger.info(f"Extracting base information for tender {tender_id}")
                 await run_extract_base_information(job)
+            case "extract_exclusion_criteria":
+                logger.info(f"Extracting exclusion criteria for tender {tender_id}")
+                await run_extract_exclusion_criteria(job)
             case "extract_requirements":
                 logger.info(f"Extracting requirements for tender {tender_id}")
                 await run_extract_requirements(job)

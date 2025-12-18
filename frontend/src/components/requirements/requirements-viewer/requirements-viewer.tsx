@@ -1,9 +1,9 @@
 import MarkdownViewer from "@/components/markdown-viewer/markdown-viewer";
-import { type Document, type Requirement } from "@/services/api/api.ts";
+import { type Requirement, type Document } from "@/services/api/api.ts";
 import Mark from "advanced-mark.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SelectionMenu, type SelectionMenuRef } from "./selection-menu.tsx";
-import { RequirementHoverOverlay } from "./requirements-overlay";
+import { RequirementHoverOverlay } from "./requirements-overlay.tsx";
 import { cleanMarkdownSnippets } from "@/lib/utils";
 import { EXCLUSION } from "@/constants/requirement-categories.ts";
 

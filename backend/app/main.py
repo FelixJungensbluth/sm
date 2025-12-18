@@ -22,7 +22,6 @@ async def lifespan(app: FastAPI):
     """Manage application lifespan: startup and shutdown events."""
     # Startup
     logger.info("Starting application...")
-    settings = get_settings()
     
     # Initialize database connections
     get_mongo_client()
@@ -48,7 +47,6 @@ app = FastAPI(
 )
 
 settings = get_settings()
-# Support comma-separated origins for production
 origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
 
 app.add_middleware(

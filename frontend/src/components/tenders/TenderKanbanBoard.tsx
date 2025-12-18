@@ -7,9 +7,11 @@ import {
   KanbanProvider,
 } from '@/components/ui/shadcn-io/kanban';
 import { TenderCard } from './TenderCard';
-import type { BaseInformation, Tender, TenderStatus } from '@/services/api/api';
+import type { ExtractedData, Tender } from '@/services/api/api';
+import type { TenderStatus } from '@/lib/types';
 
 import { statusBoardColors, statusLabels } from '@/utils/status-labels';
+import { TENDER_STATUSES } from '@/lib/types';
 
 
 interface TenderKanbanBoardProps {
@@ -19,7 +21,7 @@ interface TenderKanbanBoardProps {
   selectedTender?: Tender;
   onCreateTender?: () => void;
   projectId: string;
-  baseInformationMap?: Record<string, BaseInformation[]>;
+  baseInformationMap?: Record<string, ExtractedData[]>;
 }
 
 function TenderKanbanBoard({
@@ -33,28 +35,31 @@ function TenderKanbanBoard({
 }: TenderKanbanBoardProps) {
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
-      {Object.entries(groupedTenders).map(([status, statusTenders]) => (
-        <KanbanBoard key={status} id={status as TenderStatus}>
-          <KanbanHeader
-            name={statusLabels[status as TenderStatus]}
-            color={statusBoardColors[status as TenderStatus]}
-          />
-          <KanbanCards>
-            {statusTenders.map((tender, index) => (
-              <TenderCard
-                key={tender.id}
-                tender={tender}
-                index={index}
-                status={status}
-                onViewDetails={onViewTenderDetails}
-                isOpen={selectedTender?.id === tender.id}
-                projectId={projectId}
-                baseInformation={baseInformationMap?.[tender.id]}
-              />
-            ))}
-          </KanbanCards>
-        </KanbanBoard>
-      ))}
+      {TENDER_STATUSES.map((status: TenderStatus) => {
+        const statusTenders = groupedTenders[status] || [];
+        return (
+          <KanbanBoard key={status} id={status}>
+            <KanbanHeader
+              name={statusLabels[status]}
+              color={statusBoardColors[status]}
+            />
+            <KanbanCards>
+              {statusTenders.map((tender, index) => (
+                <TenderCard
+                  key={tender.id}
+                  tender={tender}
+                  index={index}
+                  status={status}
+                  onViewDetails={onViewTenderDetails}
+                  isOpen={selectedTender?.id === tender.id}
+                  projectId={projectId}
+                  baseInformation={baseInformationMap?.[tender.id]}
+                />
+              ))}
+            </KanbanCards>
+          </KanbanBoard>
+        );
+      })}
     </KanbanProvider>
   );
 }

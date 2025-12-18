@@ -43,43 +43,8 @@ export type RequirementStatus =
   | "deleted"
   | "duplicate";
 
-/** BaseInformationStatus */
-export type BaseInformationStatus = "approved" | "rejected" | "pending";
-
-/** BaseInformation */
-export interface BaseInformation {
-  /**
-   * Value
-   * The extracted value for the field
-   */
-  value?: string | null;
-  /**
-   * Source File
-   * The source file where the information was found
-   */
-  source_file?: string | null;
-  /**
-   * Source File Id
-   * The source file id where the information was found
-   */
-  source_file_id?: string | null;
-  /**
-   * Exact Text
-   * The exact text passage from the document
-   */
-  exact_text?: string | null;
-  /**
-   * Field Name
-   * The field which is extracted
-   */
-  field_name: string;
-  /** @default "pending" */
-  status?: BaseInformationStatus;
-  /** Note */
-  note?: string | null;
-  /** Fulfillable */
-  fulfillable?: boolean | null;
-}
+/** ExtractedDataStatus */
+export type ExtractedDataStatus = "approved" | "rejected" | "pending";
 
 /** Body_create_tender */
 export interface BodyCreateTender {
@@ -158,6 +123,22 @@ export interface ChatRequest {
   context_type?: string;
 }
 
+/** ChatResponse */
+export interface ChatResponse {
+  /**
+   * Conversation Id
+   * @format uuid
+   */
+  conversation_id: string;
+  /**
+   * Message Id
+   * @format uuid
+   */
+  message_id: string;
+  /** Content */
+  content: string;
+}
+
 /**
  * ChatTenderListResponse
  * Response model for chat tender list.
@@ -214,6 +195,57 @@ export interface DeleteConversationResponse {
   success: boolean;
   /** Message */
   message: string;
+}
+
+/** Document */
+export interface Document {
+  /**
+   * Id
+   * @format uuid
+   */
+  id: string;
+  /** Name */
+  name: string;
+  /**
+   * Tender Id
+   * @format uuid
+   */
+  tender_id: string;
+}
+
+/** ExtractedData */
+export interface ExtractedData {
+  /**
+   * Value
+   * The extracted value for the field
+   */
+  value?: string | null;
+  /**
+   * Source File
+   * The source file where the information was found
+   */
+  source_file?: string | null;
+  /**
+   * Source File Id
+   * The source file id where the information was found
+   */
+  source_file_id?: string | null;
+  /**
+   * Exact Text
+   * The exact text passage from the document
+   */
+  exact_text?: string | null;
+  /**
+   * Field Name
+   * The field which is extracted
+   */
+  field_name: string;
+  /** @default "pending" */
+  status?: ExtractedDataStatus;
+  /** Note */
+  note?: string | null;
+  /** Fulfillable */
+  fulfillable?: boolean | null;
 }
 
 /** HTTPValidationError */
@@ -304,7 +336,9 @@ export interface Tender {
   /** Description */
   description: string;
   /** Base Information */
-  base_information: BaseInformation[];
+  base_information: ExtractedData[];
+  /** Exclusion Criteria */
+  exclusion_criteria: ExtractedData[];
   status: TenderReviewStatus;
   /**
    * Created At
@@ -324,7 +358,7 @@ export interface Tender {
  */
 export interface TenderDocumentListResponse {
   /** Documents */
-  documents: Record<string, any>[];
+  documents: Document[];
 }
 
 /**
@@ -400,7 +434,9 @@ export interface TenderUpdate {
   /** Description */
   description?: string | null;
   /** Base Information */
-  base_information?: BaseInformation[] | null;
+  base_information?: ExtractedData[] | null;
+  /** Exclusion Criteria */
+  exclusion_criteria?: ExtractedData[] | null;
   status?: TenderReviewStatus | null;
 }
 
@@ -849,7 +885,7 @@ export class Api<
          */
         field_name: string;
         /** New status for the field */
-        base_information_status: BaseInformationStatus;
+        base_information_status: ExtractedDataStatus;
       },
       params: RequestParams = {},
     ) =>
@@ -1084,7 +1120,7 @@ export class Api<
       ),
 
     /**
-     * @description Send a message in a conversation and stream the AI response. Creates a new conversation if conversation_id is not provided.
+     * @description Send a message in a conversation and get the AI response. Creates a new conversation if conversation_id is not provided.
      *
      * @tags chat
      * @name SendMessage
@@ -1092,7 +1128,7 @@ export class Api<
      * @request POST:/chat/messages
      */
     sendMessage: (data: ChatRequest, params: RequestParams = {}) =>
-      this.request<any, void | HTTPValidationError>({
+      this.request<ChatResponse, void | HTTPValidationError>({
         path: `/chat/messages`,
         method: "POST",
         body: data,

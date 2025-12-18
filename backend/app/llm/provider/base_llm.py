@@ -71,17 +71,17 @@ class BaseLLM(ABC):
         pass
 
     @abstractmethod
-    async def stream_response(
+    async def get_response(
         self, llm_requests: List[LlmRequest]
-    ) -> AsyncGenerator[str, None]:
+    ) -> str:
         """
-        Stream response tokens from the LLM.
+        Get a complete response from the LLM (non-streaming).
 
         Args:
             llm_requests: List of LLM requests (conversation history + current message)
 
-        Yields:
-            Token strings as they are generated
+        Returns:
+            The complete response string
         """
         pass
 

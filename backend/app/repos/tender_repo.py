@@ -1,13 +1,11 @@
-from app.models.base_information import BaseInformationStatus
 from typing import List, Optional
-from enum import Enum
 from pymongo import MongoClient
 from datetime import datetime, timezone
 import uuid
 
 from app.config.logger import logger
 from app.models.tender import Tender, TenderUpdate, TenderReviewStatus
-from app.models.base_information import BaseInformation
+from app.models.extracted_data import ExtractedData, ExtractedDataStatus
 
 
 class TenderRepo:
@@ -111,7 +109,7 @@ class TenderRepo:
             logger.error(f"Error deleting tender {tender_id}: {e}")
             return False
     
-    def update_tender_base_information_status(self, tender_id: uuid.UUID, field_name: str, base_information_status: BaseInformationStatus) -> bool:
+    def update_tender_base_information_status(self, tender_id: uuid.UUID, field_name: str, base_information_status: ExtractedDataStatus) -> bool:
         result = self.collection.update_one(
             {"id": str(tender_id), "base_information.field_name": field_name},
             {"$set": {"base_information.$.status": base_information_status.value}}
@@ -165,10 +163,17 @@ class TenderRepo:
                 for info_dict in base_info_data:
                     if isinstance(info_dict, dict):
                         try:
-                            base_information.append(BaseInformation(**info_dict))
+                            base_information.append(ExtractedData(**info_dict))
                         except Exception as e:
                             logger.warning(f"Error parsing base_information item: {e}")
                             continue
+
+            exclusion_criteria = []
+            exclusion_criteria_data = doc.get("exclusion_criteria", [])
+            if isinstance(exclusion_criteria_data, list):
+                for info_dict in exclusion_criteria_data:
+                    if isinstance(info_dict, dict):
+                        exclusion_criteria.append(ExtractedData(**info_dict))
 
             # Convert status from string to TenderStatus enum
             status_value = doc.get("status")
@@ -191,6 +196,7 @@ class TenderRepo:
                 generated_title=doc.get("generated_title", ""),
                 description=doc.get("description", ""),
                 base_information=base_information,
+                exclusion_criteria=exclusion_criteria,
                 status=status,
                 created_at=created_at,
                 updated_at=updated_at,

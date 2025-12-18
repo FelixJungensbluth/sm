@@ -1,5 +1,4 @@
-import type { TenderStatus } from "@/services/api/api";
-import type { TaskStatus } from "../lib/types";
+import type { TenderStatus } from "@/lib/types";
 
 export const statusLabels: Record<TenderStatus, string> = {
   "In Prüfung": "In Prüfung",
@@ -16,7 +15,3 @@ export const statusBoardColors: Record<TenderStatus, string> = {
   "Abgeschickt": "--success",
   "Abgelehnt": "--destructive",
 };
-
-// Keep TaskStatus versions for backward compatibility
-export const taskStatusLabels: Record<TaskStatus, string> = statusLabels;
-export const taskStatusBoardColors: Record<TaskStatus, string> = statusBoardColors;

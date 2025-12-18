@@ -1,4 +1,4 @@
-import type { BaseInformation } from "@/services/api/api";
+import type { ExtractedData } from "@/services/api/api";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/hooks/use-api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,7 +6,7 @@ import { useCallback } from "react";
 import { ApproveRejectButtons } from "@/components/shared/ApproveRejectButtons";
 
 interface BaseInformationCardProps {
-  baseInformation: BaseInformation;
+  baseInformation: ExtractedData;
   index: number;
   onSelect: (index: number) => void;
   isSelected?: boolean;
