@@ -37,11 +37,12 @@ def enqueue_tender_job(
         type="tender_processing",
         tender_id=tender_id,
         document_ids=document_ids,
-        pipeline=["index_documents", "extract_base_information", "extract_exclusion_criteria", "extract_requirements"],
+        pipeline=["index_documents", "extract_base_information_agentic", "extract_base_information", "extract_exclusion_criteria", "extract_requirements"],
         current_step_index=0,
         status=TenderProcessingStatus.queued,
         step_status=[
             StepStatus(name="index_documents", status="pending", last_error=None),
+            StepStatus(name="extract_base_information_agentic", status="pending", last_error=None),
             StepStatus(name="extract_base_information", status="pending", last_error=None),
             StepStatus(name="extract_exclusion_criteria", status="pending", last_error=None),
             StepStatus(name="extract_requirements", status="pending", last_error=None),

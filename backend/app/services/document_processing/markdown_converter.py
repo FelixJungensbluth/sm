@@ -120,7 +120,6 @@ def convert_to_markdown(
         logger.error(f"Error converting documents with Docling: {e}")
         return [], []
 
-
 def get_converter(use_ocr: bool) -> DocumentConverter:
     return DocumentConverter(
         allowed_formats=[

@@ -4,6 +4,7 @@ from app.services.requirements_extraction_service import RequirementExtractionSe
 from app.models.tender import TenderUpdate
 from app.config.app_config import get_llm_provider
 from app.services.data_extraction.data_extraction_service import DataExtractionService
+from app.services.data_extraction.agentic import AgenticDataExtractionService
 from app.services.data_extraction.queries import BASE_INFORMATION_QUERIES, EXCLUSION_CRITERIA_QUERIES
 from app.services.data_extraction.extracted_data_parser import parse_extracted_data
 
@@ -31,6 +32,7 @@ from app.queue.tender_queue import (
 from app.repos.tender_repo import TenderRepo
 from app.services.external.minio_service import MinioService
 from app.database.mongo import get_mongo_client
+from app.database.qdrant import get_qdrant_client
 from app.repos.document_repo import DocumentRepo
 from app.services.document_processing.document_processing_service import process_documents
 from app.services.rag.rag_service import RagService
@@ -40,6 +42,7 @@ class WorkerContext:
     def __init__(self):
         self.settings = get_settings()
         self.mongo_client = get_mongo_client()
+        self.qdrant_client = get_qdrant_client()
         self.minio_service = MinioService(self.settings)
         
         self.tender_repo = TenderRepo(self.mongo_client)
@@ -114,6 +117,50 @@ async def run_extract_base_information(job: dict) -> None:
         )
         context.tender_repo.update_tender(tender.id, tender_update)
 
+
+async def run_extract_base_information_agentic(job: dict) -> None:
+    """Extract base information using the agentic data extraction service."""
+    context = get_ctx()
+    tender_id = job["tender_id"]
+    tender: Tender | None = context.tender_repo.get_tender_by_id(uuid.UUID(tender_id))
+    
+    if not tender:
+        raise RuntimeError(f"Tender {tender_id} not found")
+    
+    # Get LLM model name from config
+    from app.config.app_config import _load_config
+    config = _load_config()
+    llm_config = config.get("llm", {})
+    llm_model = llm_config.get("default_model", "gpt-oss")
+    
+    # Create agentic service instance for this tender
+    agentic_service = AgenticDataExtractionService(
+        settings=context.settings,
+        embedding_provider=context.embedding_provider,
+        qdrant_client=context.qdrant_client,
+        mongo_client=context.mongo_client,
+        tender_id=tender.id,
+        llm_model=llm_model,
+        enable_tracing=True,
+    )
+    
+    # Extract all fields using the agentic service
+    results = {}
+    for field_name, query in BASE_INFORMATION_QUERIES.items():
+        logger.info(f"Extracting {field_name} using agentic service")
+        try:
+            result = await agentic_service.extract_information(field_name, query)
+            results[field_name] = result
+        except Exception as e:
+            logger.error(f"Error extracting {field_name}: {e}")
+            results[field_name] = {
+                "value": None,
+                "exact_text": "",
+                "confidence": "low",
+                "reasoning": f"Error: {str(e)}"
+            }
+    
+
 async def run_extract_exclusion_criteria(job: dict) -> None:
     context = get_ctx()
     tender_id = job["tender_id"]
@@ -165,6 +212,9 @@ async def run_step_for_job(job: dict) -> None:
             case "extract_base_information":
                 logger.info(f"Extracting base information for tender {tender_id}")
                 await run_extract_base_information(job)
+            case "extract_base_information_agentic":
+                logger.info(f"Extracting base information (agentic) for tender {tender_id}")
+                await run_extract_base_information_agentic(job)
             case "extract_exclusion_criteria":
                 logger.info(f"Extracting exclusion criteria for tender {tender_id}")
                 await run_extract_exclusion_criteria(job)

@@ -5,6 +5,7 @@ import { TenderDetail } from "@/pages/tender-details";
 import { TenderView } from "@/pages/tender-view";
 import { RequirementsExtraction } from "@/pages/requirements-extraction";
 import { Chat } from "@/pages/chat";
+import { AgentTraces } from "@/pages/agent-traces";
 import { NormalLayout } from "@/components/layout/NormalLayout";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeMode } from "./lib/types";
@@ -30,9 +31,11 @@ function AppContent() {
             <Route path="/tenders/:tenderId" element={<TenderDetail />} />
             <Route path="/tenders/:tenderId/view" element={<TenderView />} />
             <Route path="/tenders/:tenderId/requirements" element={<RequirementsExtraction />} />
+            <Route path="/tenders/:tenderId/traces" element={<AgentTraces />} />
             <Route path="/projects/:projectId/tenders/:tenderId" element={<TenderDetail />} />
             <Route path="/projects/:projectId/tenders/:tenderId/view" element={<TenderView />} />
             <Route path="/projects/:projectId/tenders/:tenderId/requirements" element={<RequirementsExtraction />} />
+            <Route path="/projects/:projectId/tenders/:tenderId/traces" element={<AgentTraces />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/settings/projects" element={<Settings />} />

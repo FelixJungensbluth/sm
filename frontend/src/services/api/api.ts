@@ -1153,4 +1153,64 @@ export class Api<
         ...params,
       }),
   };
+  agentTraces = {
+    /**
+     * @description Retrieve all agent execution traces for a specific tender.
+     *
+     * @tags agent-traces
+     * @name GetAgentTraces
+     * @summary Get all agent traces for a tender
+     * @request GET:/agent-traces/{tender_id}
+     */
+    getAgentTraces: (tenderId: string, params: RequestParams = {}) =>
+      this.request<
+        Record<string, Record<string, any>[]>,
+        void | HTTPValidationError
+      >({
+        path: `/agent-traces/${tenderId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve the agent execution trace for a specific field extraction.
+     *
+     * @tags agent-traces
+     * @name GetAgentTrace
+     * @summary Get agent trace for a specific field
+     * @request GET:/agent-traces/{tender_id}/{field_name}
+     */
+    getAgentTrace: (
+      tenderId: string,
+      fieldName: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<Record<string, any>[], void | HTTPValidationError>({
+        path: `/agent-traces/${tenderId}/${fieldName}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Retrieve a specific chunk by its ID from Qdrant.
+     *
+     * @tags agent-traces
+     * @name GetChunkById
+     * @summary Get chunk by ID
+     * @request GET:/agent-traces/{tender_id}/chunks/{chunk_id}
+     */
+    getChunkById: (
+      tenderId: string,
+      chunkId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<Record<string, any>, void | HTTPValidationError>({
+        path: `/agent-traces/${tenderId}/chunks/${chunkId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+  };
 }

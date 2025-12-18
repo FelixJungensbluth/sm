@@ -11,6 +11,7 @@ from app.routes.tenders import router as tenders_router
 from app.routes.jobs import router as jobs_router
 from app.routes.requirements import router as requirements_router
 from app.routes.chat import router as chat_router
+from app.routes.agent_traces import router as agent_traces_router
 from app.config.settings import get_settings
 from app.config.logger import logger
 from app.database.mongo import get_mongo_client, close_mongo_client
@@ -96,3 +97,4 @@ app.include_router(tenders_router)
 app.include_router(jobs_router)
 app.include_router(requirements_router)
 app.include_router(chat_router)
+app.include_router(agent_traces_router)

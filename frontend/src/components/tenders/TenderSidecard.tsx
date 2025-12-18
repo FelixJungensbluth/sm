@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, ExternalLink, Save, Edit2, Trash2 } from "lucide-react";
+import { X, ExternalLink, Save, Edit2, Trash2, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ interface TenderSidecardProps {
 export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
   const updateTender = useUpdateTender();
   const deleteTender = useDeleteTender();
-  const { navigateToTenderDetail, navigateToTenderView, navigateToTenderRequirements } = useTenderNavigation();
+  const { navigateToTenderDetail, navigateToTenderView, navigateToTenderRequirements, navigateToTenderTraces } = useTenderNavigation();
 
   // Form state
   const [title, setTitle] = useState(tender.title);
@@ -81,6 +81,10 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
 
   const handleOpenBaseInfoReview = () => {
     navigateToTenderView(tender.id);
+  };
+
+  const handleOpenTraces = () => {
+    navigateToTenderTraces(tender.id);
   };
 
   const handleDelete = () => {
@@ -178,6 +182,16 @@ export function TenderSidecard({ tender, onClose }: TenderSidecardProps) {
               <Save className={cn("h-4 w-4", isSaving && "animate-spin")} />
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleOpenTraces}
+            className="h-8 w-8 flex-shrink-0"
+            aria-label="View agent traces"
+            title="View agent traces"
+          >
+            <Network className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

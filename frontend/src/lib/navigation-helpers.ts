@@ -31,9 +31,18 @@ export function useTenderNavigation() {
     }
   };
 
+  const navigateToTenderTraces = (tenderId: string): void => {
+    if (projectId) {
+      navigate(`/projects/${projectId}/tenders/${tenderId}/traces`);
+    } else {
+      navigate(`/tenders/${tenderId}/traces`);
+    }
+  };
+
   return {
     navigateToTenderDetail,
     navigateToTenderView,
     navigateToTenderRequirements,
+    navigateToTenderTraces,
   };
 }
